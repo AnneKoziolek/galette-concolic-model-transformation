@@ -58,8 +58,8 @@ public interface ConcolicTaintListener {
      * Called when a method call is made with symbolic parameters.
      *
      * @param methodName Name of the method being called
-     * @param parameterTags Array of tags for method parameters
-     * @param returnTag Tag for the return value (may be null)
+     * @param arguments Array of tags for method parameters
+     * @param result Tag for the return value (may be null)
      */
-    void onMethodCall(String methodName, Tag[] parameterTags, Tag returnTag);
+    void onMethodCall(String methodName, Tag[] arguments, Tag result);
 }

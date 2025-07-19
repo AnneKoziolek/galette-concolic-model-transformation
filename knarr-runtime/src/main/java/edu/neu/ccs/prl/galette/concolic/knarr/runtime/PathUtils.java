@@ -56,6 +56,15 @@ public class PathUtils {
     }
 
     /**
+     * Reset the PathUtils state for testing.
+     */
+    public static void reset() {
+        usedLabels.clear();
+        JPFInited = false;
+        curPC = null;
+    }
+
+    /**
      * Check label validity and initialize JPF if needed.
      *
      * @param label The label to check
