@@ -44,6 +44,7 @@
         <module>galette-maven-plugin</module>
         <module>galette-benchmark</module>
         <module>galette-integration-tests</module>
+        <module>knarr-runtime</module>
     </modules>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -74,6 +75,11 @@
             <dependency>
                 <groupId>org.ow2.asm</groupId>
                 <artifactId>asm-commons</artifactId>
+                <version>9.6</version>
+            </dependency>
+            <dependency>
+                <groupId>org.ow2.asm</groupId>
+                <artifactId>asm-util</artifactId>
                 <version>9.6</version>
             </dependency>
             <dependency>
