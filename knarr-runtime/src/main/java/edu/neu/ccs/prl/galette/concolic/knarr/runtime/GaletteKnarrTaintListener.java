@@ -15,6 +15,8 @@ import za.ac.sun.cs.green.expr.Operation.Operator;
  *
  * This class migrates Knarr's Phosphor-based TaintListener to use Galette APIs.
  * It handles taint propagation events and converts them to path constraints.
+ *
+ * @author [Anne Koziolek](https://github.com/AnneKoziolek)
  */
 public class GaletteKnarrTaintListener implements ConcolicTaintListener {
 

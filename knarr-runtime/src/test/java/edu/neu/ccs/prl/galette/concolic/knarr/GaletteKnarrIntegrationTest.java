@@ -20,6 +20,8 @@ import za.ac.sun.cs.green.expr.IntVariable;
  * These tests verify that the core migration from Phosphor to Galette
  * is working correctly and that basic concolic execution functionality
  * is preserved.
+ *
+ * @author [Anne Koziolek](https://github.com/AnneKoziolek)
  */
 public class GaletteKnarrIntegrationTest {
 

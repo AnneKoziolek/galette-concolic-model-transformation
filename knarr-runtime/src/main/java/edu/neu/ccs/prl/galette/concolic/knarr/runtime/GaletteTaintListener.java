@@ -16,6 +16,8 @@ import za.ac.sun.cs.green.expr.Operation.Operator;
  * This class replaces the original Phosphor-based TaintListener with
  * Galette-compatible APIs while maintaining the same concolic execution
  * functionality for constraint generation and symbolic execution.
+ *
+ * @author [Anne Koziolek](https://github.com/AnneKoziolek)
  */
 public class GaletteTaintListener implements ConcolicTaintListener {
 

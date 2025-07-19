@@ -8,6 +8,8 @@ import java.util.Stack;
  *
  * This class manages the control flow stack for concolic execution,
  * tracking which control flow branches affect the current execution path.
+ *
+ * @author [Anne Koziolek](https://github.com/AnneKoziolek)
  */
 public class ConcolicControlStack {
 

@@ -11,6 +11,8 @@ import za.ac.sun.cs.green.expr.*;
  *
  * This class handles the conversion from Galette's taint tracking
  * to Green solver's symbolic expressions for constraint solving.
+ *
+ * @author [Anne Koziolek](https://github.com/AnneKoziolek)
  */
 public class GaletteGreenBridge {
 

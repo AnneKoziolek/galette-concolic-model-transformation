@@ -11,6 +11,8 @@ import za.ac.sun.cs.green.expr.Operation.Operator;
  *
  * This class replaces the original Phosphor-based PathUtils with
  * Galette-compatible APIs for managing symbolic execution constraints.
+ *
+ * @author [Anne Koziolek](https://github.com/AnneKoziolek)
  */
 public class PathUtils {
 

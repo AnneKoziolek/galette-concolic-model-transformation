@@ -15,6 +15,8 @@ import za.ac.sun.cs.green.expr.*;
  *
  * This class migrates Knarr's Phosphor-based Symbolicator to use Galette APIs.
  * It handles symbolic value creation, constraint solving, and input generation.
+ *
+ * @author [Anne Koziolek](https://github.com/AnneKoziolek)
  */
 public class GaletteSymbolicator {
 

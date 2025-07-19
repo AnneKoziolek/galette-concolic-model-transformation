@@ -7,6 +7,8 @@ import edu.neu.ccs.prl.galette.internal.runtime.Tag;
  *
  * This interface replaces Phosphor's DerivedTaintListener with Galette-compatible
  * methods for tracking symbolic execution events and path constraints.
+ *
+ * @author [Anne Koziolek](https://github.com/AnneKoziolek)
  */
 public interface ConcolicTaintListener {
 
