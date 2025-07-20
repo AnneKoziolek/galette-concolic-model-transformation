@@ -4,6 +4,8 @@ import edu.neu.ccs.prl.galette.concolic.knarr.runtime.GaletteSymbolicator;
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.PathConditionWrapper;
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.PathUtils;
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.SymbolicComparison;
+import edu.neu.ccs.prl.galette.examples.models.source.BrakeDiscSource;
+import edu.neu.ccs.prl.galette.examples.models.target.BrakeDiscTarget;
 import edu.neu.ccs.prl.galette.internal.runtime.Tag;
 import za.ac.sun.cs.green.expr.Expression;
 
@@ -249,5 +251,299 @@ public class SymbolicExecutionWrapper {
      */
     public static boolean evaluateThicknessCondition(SymbolicValue<Double> thickness, double threshold) {
         return symbolicComparison(thickness, threshold, ">");
+    }
+
+    // ==================== DEMO AND INTERACTION METHODS ====================
+
+    /**
+     * Interactive transformation with symbolic execution capabilities.
+     * Prompts user for input and runs transformation with symbolic tracking.
+     */
+    public static BrakeDiscTarget transformInteractiveSymbolic(BrakeDiscSource source, java.util.Scanner scanner) {
+        System.out.println("\n=== Interactive Symbolic Model Transformation ===");
+        System.out.println("Source brake disc: " + source);
+        System.out.print("Please enter the brake disc thickness (mm): ");
+
+        double thickness = scanner.nextDouble();
+
+        return transformSymbolic(source, thickness, "user_thickness");
+    }
+
+    /**
+     * Transform with symbolic execution capabilities.
+     * This method wraps the clean transformation with symbolic execution.
+     */
+    public static BrakeDiscTarget transformSymbolic(
+            BrakeDiscSource source, double thicknessValue, String thicknessLabel) {
+        System.out.println("=== Symbolic Model Transformation ===");
+        System.out.println("Source model: " + source);
+        System.out.println("User input thickness: " + thicknessValue + " mm");
+
+        // Create symbolic value for the external input
+        SymbolicValue<Double> symbolicThickness = makeSymbolicDouble(thicknessLabel, thicknessValue);
+        System.out.println("Created symbolic value: " + symbolicThickness);
+
+        // Use the clean transformation for the core logic
+        BrakeDiscTarget target = BrakeDiscTransformationClean.transform(source, symbolicThickness.getValue());
+
+        // Add symbolic execution analysis for the conditional logic
+        System.out.println("\n=== Symbolic Condition Analysis ===");
+        analyzeConditionalLogic(symbolicThickness, target);
+
+        // Display path constraint analysis
+        displayPathConstraintAnalysis();
+
+        System.out.println("=== Symbolic Transformation Complete ===");
+        System.out.println("Target model: " + target);
+
+        return target;
+    }
+
+    /**
+     * Analyze the conditional logic with symbolic execution.
+     * This recreates the thickness comparison to collect path constraints.
+     */
+    private static void analyzeConditionalLogic(SymbolicValue<Double> thickness, BrakeDiscTarget target) {
+        double threshold = 10.0;
+
+        System.out.println("Analyzing condition: thickness > " + threshold);
+
+        // Perform symbolic comparison to collect path constraints
+        boolean condition = evaluateThicknessCondition(thickness, threshold);
+
+        System.out.println("Condition result: " + condition);
+        System.out.println("Actual additionalStiffness value: " + target.hasAdditionalStiffness());
+
+        // Verify consistency
+        if (condition == target.hasAdditionalStiffness()) {
+            System.out.println("✓ Symbolic analysis consistent with transformation result");
+        } else {
+            System.out.println("⚠ Inconsistency detected between symbolic analysis and result");
+        }
+    }
+
+    /**
+     * Demonstrate path exploration by running multiple transformations.
+     */
+    public static void demonstratePathExploration(BrakeDiscSource source) {
+        System.out.println("\n" + repeatString("=", 70));
+        System.out.println("SYMBOLIC PATH EXPLORATION DEMONSTRATION");
+        System.out.println(repeatString("=", 70));
+
+        double[] testValues = {8.0, 15.0};
+        String[] pathDescriptions = {"thickness ≤ 10 (no additional stiffness)", "thickness > 10 (additional stiffness)"
+        };
+
+        for (int i = 0; i < testValues.length; i++) {
+            System.out.println("\n### Path " + (i + 1) + ": " + pathDescriptions[i] + " ###");
+
+            // Reset symbolic execution state for each path
+            reset();
+
+            BrakeDiscTarget result = transformSymbolic(source, testValues[i], "path_" + (i + 1) + "_thickness");
+
+            System.out.println("Result: additionalStiffness = " + result.hasAdditionalStiffness());
+            System.out.println(getExecutionSummary());
+        }
+
+        System.out.println("\n" + repeatString("=", 70));
+        System.out.println("PATH EXPLORATION COMPLETE");
+        System.out.println("Demonstrated how different inputs create different path constraints");
+        System.out.println(repeatString("=", 70));
+    }
+
+    /**
+     * Compare symbolic vs. clean transformation results.
+     */
+    public static void compareTransformationMethods(BrakeDiscSource source, double thickness) {
+        System.out.println("\n=== Comparing Transformation Methods ===");
+
+        // Clean transformation (no symbolic execution)
+        System.out.println("\n1. Clean Transformation (Business Logic Only):");
+        BrakeDiscTarget cleanResult = BrakeDiscTransformationClean.transform(source, thickness);
+        System.out.println("Result: " + cleanResult);
+
+        // Reset and run symbolic transformation
+        reset();
+        System.out.println("\n2. Symbolic Transformation (With Path Constraints):");
+        BrakeDiscTarget symbolicResult = transformSymbolic(source, thickness, "comparison_thickness");
+
+        // Compare results
+        System.out.println("\n3. Comparison:");
+        boolean resultsMatch = compareResults(cleanResult, symbolicResult);
+        System.out.println("Results match: " + (resultsMatch ? "✓ YES" : "✗ NO"));
+
+        if (isSymbolicExecutionActive()) {
+            System.out.println("Symbolic execution provides additional analysis capabilities:");
+            System.out.println("- Path constraints collected for solver-based test generation");
+            System.out.println("- Ability to explore alternative execution paths");
+            System.out.println("- Impact analysis of external inputs on model properties");
+        }
+    }
+
+    /**
+     * Compare two transformation results for equality.
+     */
+    private static boolean compareResults(BrakeDiscTarget result1, BrakeDiscTarget result2) {
+        return Math.abs(result1.getDiameter() - result2.getDiameter()) < 0.001
+                && Math.abs(result1.getThickness() - result2.getThickness()) < 0.001
+                && Math.abs(result1.getSurfaceArea() - result2.getSurfaceArea()) < 0.001
+                && Math.abs(result1.getVolume() - result2.getVolume()) < 0.001
+                && Math.abs(result1.getEstimatedWeight() - result2.getEstimatedWeight()) < 0.001
+                && result1.hasAdditionalStiffness() == result2.hasAdditionalStiffness()
+                && result1.getMaterial().equals(result2.getMaterial())
+                && result1.getCoolingVanes() == result2.getCoolingVanes();
+    }
+
+    /**
+     * Get detailed analysis of a symbolic transformation.
+     */
+    public static String getSymbolicAnalysis(BrakeDiscSource source, double thickness) {
+        reset();
+
+        BrakeDiscTarget result = transformSymbolic(source, thickness, "analysis_thickness");
+
+        StringBuilder analysis = new StringBuilder();
+        analysis.append("=== Symbolic Transformation Analysis ===\n");
+        analysis.append("Input: ").append(source).append("\n");
+        analysis.append("Thickness: ").append(thickness).append(" mm\n");
+        analysis.append("Output: ").append(result).append("\n");
+        analysis.append("\n").append(analyzePathConstraints());
+
+        return analysis.toString();
+    }
+
+    /**
+     * Legacy symbolic demo functionality using clean transformation + wrapper.
+     */
+    public static BrakeDiscTarget runLegacyStyleDemo(BrakeDiscSource source, double thickness) {
+        System.out.println("=== Starting Brake Disc Model Transformation ===");
+        System.out.println("Source model: " + source);
+        System.out.println("User input thickness: " + thickness + " mm");
+
+        // Create symbolic representation of the user input
+        SymbolicValue<Double> symbolicThickness = makeSymbolicDouble("user_thickness", thickness);
+        System.out.println(
+                "Created symbolic tag for thickness: " + (symbolicThickness.isSymbolic() ? "SUCCESS" : "FAILED"));
+
+        // Use clean transformation for core logic
+        BrakeDiscTarget target = BrakeDiscTransformationClean.transform(source, thickness);
+
+        // Perform geometric calculations output
+        System.out.println("\n=== Performing Geometric Calculations ===");
+        System.out.println("Surface area: " + target.getSurfaceArea() + " mm²");
+        System.out.println("Volume: " + target.getVolume() + " mm³");
+        System.out.println("Estimated weight: " + target.getEstimatedWeight() + " g");
+
+        // CRITICAL: Conditional logic analysis
+        System.out.println("\n=== Evaluating Conditional Logic ===");
+        System.out.println("Checking if thickness (" + thickness + ") > 10.0");
+
+        // Perform symbolic comparison to collect path constraints
+        boolean isThick = evaluateThicknessCondition(symbolicThickness, 10.0);
+
+        if (isThick) {
+            System.out.println("→ Path taken: thickness > 10, setting additionalStiffness = true");
+        } else {
+            System.out.println("→ Path taken: thickness ≤ 10, setting additionalStiffness = false");
+        }
+
+        // Collect and display path constraints (legacy style)
+        collectAndDisplayPathConstraintsLegacyStyle();
+
+        System.out.println("\n=== Transformation Complete ===");
+        System.out.println("Target model: " + target);
+
+        return target;
+    }
+
+    /**
+     * Legacy-style path constraint collection and display.
+     */
+    private static void collectAndDisplayPathConstraintsLegacyStyle() {
+        System.out.println("\n=== Path Constraint Analysis ===");
+
+        try {
+            PathConditionWrapper pc = PathUtils.getCurPC();
+
+            if (pc != null && !pc.isEmpty()) {
+                System.out.println("Path constraints collected: " + pc.size());
+
+                Expression constraint = pc.toSingleExpression();
+                if (constraint != null) {
+                    System.out.println("Consolidated constraint: " + constraint);
+                    System.out.println(
+                            "Constraint type: " + constraint.getClass().getSimpleName());
+                } else {
+                    System.out.println("No consolidated constraint available");
+                }
+
+                System.out.println("Path constraint details:");
+                System.out.println("  - Number of constraints: " + pc.size());
+                System.out.println(
+                        "  - Constraint satisfiable: " + (constraint != null ? "Unknown" : "No constraints"));
+
+            } else {
+                System.out.println("No path constraints collected");
+                System.out.println("This may indicate that symbolic execution is not active");
+            }
+
+            // Try to get solution from constraint solver
+            GaletteSymbolicator.InputSolution solution = GaletteSymbolicator.solvePathCondition();
+            if (solution != null) {
+                System.out.println("Constraint solver solution: " + solution);
+            } else {
+                System.out.println("No solution from constraint solver");
+            }
+
+        } catch (Exception e) {
+            System.err.println("Error collecting path constraints: " + e.getMessage());
+            if (GaletteSymbolicator.DEBUG) {
+                e.printStackTrace();
+            }
+        }
+
+        // Display overall symbolic execution statistics
+        System.out.println("\nSymbolic execution statistics:");
+        System.out.println(GaletteSymbolicator.getStatistics());
+    }
+
+    /**
+     * Demonstrate different execution paths by running transformation with different inputs.
+     */
+    public static void demonstratePathExplorationLegacyStyle(BrakeDiscSource source) {
+        System.out.println("\n" + repeatString("=", 60));
+        System.out.println("DEMONSTRATING PATH EXPLORATION");
+        System.out.println(repeatString("=", 60));
+
+        // Test path 1: thickness ≤ 10 (no additional stiffness)
+        System.out.println("\n### Testing Path 1: thickness ≤ 10 ###");
+        reset();
+        BrakeDiscTarget result1 = runLegacyStyleDemo(source, 8.0);
+        System.out.println("Result 1 - Additional Stiffness: " + result1.hasAdditionalStiffness());
+
+        // Test path 2: thickness > 10 (additional stiffness)
+        System.out.println("\n### Testing Path 2: thickness > 10 ###");
+        reset();
+        BrakeDiscTarget result2 = runLegacyStyleDemo(source, 15.0);
+        System.out.println("Result 2 - Additional Stiffness: " + result2.hasAdditionalStiffness());
+
+        System.out.println("\n" + repeatString("=", 60));
+        System.out.println("PATH EXPLORATION COMPLETE");
+        System.out.println("Two different execution paths demonstrated:");
+        System.out.println("1. thickness ≤ 10 → additionalStiffness = false");
+        System.out.println("2. thickness > 10 → additionalStiffness = true");
+        System.out.println(repeatString("=", 60));
+    }
+
+    /**
+     * Utility method to repeat strings (Java 8 compatible).
+     */
+    private static String repeatString(String str, int count) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < count; i++) {
+            sb.append(str);
+        }
+        return sb.toString();
     }
 }

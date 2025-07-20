@@ -1,11 +1,8 @@
 package edu.neu.ccs.prl.galette.examples;
 
-import edu.neu.ccs.prl.galette.concolic.knarr.runtime.GaletteSymbolicator;
 import edu.neu.ccs.prl.galette.examples.models.source.BrakeDiscSource;
 import edu.neu.ccs.prl.galette.examples.models.target.BrakeDiscTarget;
-import edu.neu.ccs.prl.galette.examples.transformation.BrakeDiscTransformation;
 import edu.neu.ccs.prl.galette.examples.transformation.BrakeDiscTransformationClean;
-import edu.neu.ccs.prl.galette.examples.transformation.BrakeDiscTransformationSymbolic;
 import edu.neu.ccs.prl.galette.examples.transformation.SymbolicExecutionWrapper;
 import java.util.Scanner;
 
@@ -49,7 +46,7 @@ public class ModelTransformationExample {
 
         // Initialize the symbolic execution environment
         System.out.println("Initializing Galette symbolic execution environment...");
-        GaletteSymbolicator.reset(); // Start with clean state
+        SymbolicExecutionWrapper.reset(); // Start with clean state
 
         // Create a sample brake disc source model
         BrakeDiscSource sourceModel = createSampleBrakeDisc();
@@ -170,7 +167,7 @@ public class ModelTransformationExample {
         double thickness = scanner.nextDouble();
 
         SymbolicExecutionWrapper.reset();
-        BrakeDiscTarget result = BrakeDiscTransformationSymbolic.transformSymbolic(source, thickness, "user_thickness");
+        BrakeDiscTarget result = SymbolicExecutionWrapper.transformSymbolic(source, thickness, "user_thickness");
 
         System.out.println();
         System.out.println("=== TRANSFORMATION RESULTS ===");
@@ -188,7 +185,7 @@ public class ModelTransformationExample {
         System.out.print("Enter thickness value for comparison: ");
         double thickness = scanner.nextDouble();
 
-        BrakeDiscTransformationSymbolic.compareTransformationMethods(source, thickness);
+        SymbolicExecutionWrapper.compareTransformationMethods(source, thickness);
     }
 
     /**
@@ -202,8 +199,8 @@ public class ModelTransformationExample {
 
         double thickness = scanner.nextDouble();
 
-        GaletteSymbolicator.reset();
-        BrakeDiscTarget result = BrakeDiscTransformation.transform(source, thickness);
+        SymbolicExecutionWrapper.reset();
+        BrakeDiscTarget result = SymbolicExecutionWrapper.runLegacyStyleDemo(source, thickness);
 
         System.out.println();
         System.out.println("=== TRANSFORMATION RESULTS ===");
@@ -220,7 +217,7 @@ public class ModelTransformationExample {
         System.out.println("execution paths with path constraint collection.");
         System.out.println();
 
-        BrakeDiscTransformationSymbolic.demonstratePathExploration(source);
+        SymbolicExecutionWrapper.demonstratePathExploration(source);
     }
 
     /**
@@ -241,8 +238,8 @@ public class ModelTransformationExample {
         System.out.println("Expected: thickness > 10, so additionalStiffness should be true");
         System.out.println();
 
-        GaletteSymbolicator.reset();
-        BrakeDiscTarget result = BrakeDiscTransformation.transform(source, testThickness);
+        SymbolicExecutionWrapper.reset();
+        BrakeDiscTarget result = SymbolicExecutionWrapper.runLegacyStyleDemo(source, testThickness);
 
         System.out.println();
         System.out.println("=== ANALYSIS RESULTS ===");
@@ -252,7 +249,7 @@ public class ModelTransformationExample {
         // Show symbolic execution statistics
         System.out.println();
         System.out.println("Final symbolic execution state:");
-        System.out.println(GaletteSymbolicator.getStatistics());
+        System.out.println(SymbolicExecutionWrapper.getExecutionSummary());
     }
 
     /**
@@ -309,8 +306,8 @@ public class ModelTransformationExample {
             System.out.println("   Expected additionalStiffness: " + expectedStiffness[i]);
             System.out.println();
 
-            GaletteSymbolicator.reset();
-            BrakeDiscTarget result = BrakeDiscTransformation.transform(source, testValues[i]);
+            SymbolicExecutionWrapper.reset();
+            BrakeDiscTarget result = BrakeDiscTransformationClean.transform(source, testValues[i]);
 
             System.out.println("   Actual result:");
             System.out.println("   - Additional stiffness: " + result.hasAdditionalStiffness());
