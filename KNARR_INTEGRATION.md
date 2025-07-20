@@ -119,9 +119,53 @@ The integration follows clean architecture principles with clear separation of c
 
 ### Prerequisites
 
-- Java 8+ (development requires Java 17)
-- Maven 3.6.0+
-- Galette instrumented Java installation
+- **Java 17** (instrumented with Galette agent)
+- **Maven 3.8+**
+- **Platform**: Linux/WSL2 recommended, Windows native supported
+
+### Platform Compatibility and Requirements
+
+#### Development Platform Used
+- **Primary Development**: Linux on WSL2 (Windows Subsystem for Linux)
+- **OS**: Linux 6.6.87.2-microsoft-standard-WSL2
+- **Windows Version**: Windows 10/11 with WSL2 enabled
+
+#### Cross-Platform Considerations
+
+**Windows Users (Recommended: Use WSL2)**
+This project was developed using **WSL2 (Windows Subsystem for Linux)** which provides excellent compatibility:
+
+```bash
+# Install WSL2 (PowerShell as Administrator)
+wsl --install
+wsl --set-default-version 2
+
+# Install Ubuntu 20.04/22.04
+wsl --install -d Ubuntu-22.04
+
+# In WSL2 terminal - Install Java and Maven
+sudo apt update
+sudo apt install openjdk-17-jdk maven
+```
+
+**Native Windows Development**
+If you prefer native Windows development:
+
+⚠️ **Path Considerations:**
+- Use forward slashes (`/`) or escaped backslashes (`\\`) in file paths
+- Update Maven POM.xml properties for Windows paths
+- Ensure JAVA_HOME points to instrumented JDK
+
+```powershell
+# Set JAVA_HOME (adjust path)
+$env:JAVA_HOME = "C:\Path\To\Instrumented\JDK"
+
+# Build project
+mvn clean compile
+```
+
+**Linux/Unix Native**
+Full compatibility with native Linux systems.
 
 ### Building
 
@@ -304,15 +348,55 @@ public class CustomAnalysisWrapper extends SymbolicExecutionWrapper {
 - Some newer Java features not available in target environments
 - Galette instrumentation required for full functionality
 
+## Integration with External Projects
+
+### TestGallete Project Integration
+
+The enhanced Galette with Knarr capabilities can be integrated with the **TestGallete project** for Vitruvius model transformations:
+
+**Key Integration Points:**
+- **User Input Symbolic Tracking**: Make user selections in Vitruvius reactions symbolic
+- **Model Transformation Analysis**: Track how user choices affect model transformations
+- **Path Constraint Collection**: Collect constraints from interactive transformation decisions
+
+**Reference Implementation:**
+See our complete model transformation example in:
+- `knarr-runtime/src/main/java/edu/neu/ccs/prl/galette/examples/transformation/SymbolicExecutionWrapper.java`
+- `knarr-runtime/src/main/java/edu/neu/ccs/prl/galette/examples/ModelTransformationExample.java`
+
+**Integration Steps:**
+1. **Copy Knarr Runtime**: Include `knarr-runtime/` module in target project
+2. **Add Maven Dependencies**: Configure Galette agent and Green solver dependencies
+3. **Instrument User Inputs**: Use `SymbolicExecutionWrapper.makeSymbolicInt()` for user selections
+4. **Track Transformations**: Wrap transformation logic with symbolic execution
+
+**Example Usage Pattern:**
+```java
+// Instead of direct user input:
+int userSelection = userInteractor.singleSelectionDialog(...);
+
+// Use symbolic tracking:
+SymbolicValue<Integer> symbolicSelection = 
+    SymbolicExecutionWrapper.makeSymbolicInt("user_choice", userSelection);
+
+// Business logic remains unchanged:
+switch (symbolicSelection.getValue()) {
+    case 0: createInterruptTask(...); break;
+    case 1: createPeriodicTask(...); break;
+    // Path constraints automatically collected
+}
+```
+
 ## Contributing
 
 The Knarr integration demonstrates patterns that can be extended and improved:
 
 1. **Additional Model Types**: Extend beyond brake disc examples
-2. **Framework Integration**: Add support for popular transformation frameworks
+2. **Framework Integration**: Add support for popular transformation frameworks (Vitruvius, ATL, QVT)
 3. **Analysis Tools**: Develop additional analysis and visualization capabilities
 4. **Performance Optimization**: Improve symbolic execution performance
 5. **Documentation**: Add more examples and use case documentation
+6. **Platform Support**: Enhance Windows native development experience
 
 ## References
 
