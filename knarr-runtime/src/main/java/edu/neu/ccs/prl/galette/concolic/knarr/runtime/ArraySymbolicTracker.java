@@ -69,26 +69,40 @@ public class ArraySymbolicTracker {
      * Create Green expression constant from array element based on type.
      */
     private Constant createConstantFromArrayElement(Object arr, int index) {
-        switch (arr.getClass().getComponentType().getName()) {
-            case "boolean":
-                return new BoolConstant(((boolean[]) arr)[index]);
-            case "byte":
-                return new BVConstant(((byte[]) arr)[index], 32);
-            case "char":
-                return new BVConstant(((char[]) arr)[index], 32);
-            case "short":
-                return new BVConstant(((short[]) arr)[index], 32);
-            case "int":
-                return new BVConstant(((int[]) arr)[index], 32);
-            case "long":
-                return new BVConstant(((long[]) arr)[index], 64);
-            case "float":
-                return new RealConstant(((float[]) arr)[index]);
-            case "double":
-                return new RealConstant(((double[]) arr)[index]);
-            default:
-                throw new Error("Unsupported array type: "
-                        + arr.getClass().getComponentType().getName());
+        Class<?> componentType = arr.getClass().getComponentType();
+
+        if (componentType.isPrimitive()) {
+            switch (componentType.getName()) {
+                case "boolean":
+                    return new BoolConstant(((boolean[]) arr)[index]);
+                case "byte":
+                    return new BVConstant(((byte[]) arr)[index], 32);
+                case "char":
+                    return new BVConstant(((char[]) arr)[index], 32);
+                case "short":
+                    return new BVConstant(((short[]) arr)[index], 32);
+                case "int":
+                    return new BVConstant(((int[]) arr)[index], 32);
+                case "long":
+                    return new BVConstant(((long[]) arr)[index], 64);
+                case "float":
+                    return new RealConstant(((float[]) arr)[index]);
+                case "double":
+                    return new RealConstant(((double[]) arr)[index]);
+                default:
+                    throw new Error("Unsupported primitive array type: " + componentType.getName());
+            }
+        } else {
+            // Handle object arrays
+            Object element = Array.get(arr, index);
+            if (element == null) {
+                return new StringConstant("null");
+            } else if (element instanceof String) {
+                return new StringConstant((String) element);
+            } else {
+                // For other object types, use toString representation
+                return new StringConstant(element.toString());
+            }
         }
     }
 
@@ -316,7 +330,9 @@ public class ArraySymbolicTracker {
      * Create Green expression constant from runtime value.
      */
     private Constant createConstantFromValue(Object value) {
-        if (value instanceof Boolean) {
+        if (value == null) {
+            return new StringConstant("null");
+        } else if (value instanceof Boolean) {
             return new BoolConstant((Boolean) value);
         } else if (value instanceof Byte) {
             return new BVConstant((Byte) value, 32);
@@ -332,8 +348,11 @@ public class ArraySymbolicTracker {
             return new RealConstant((Float) value);
         } else if (value instanceof Double) {
             return new RealConstant((Double) value);
+        } else if (value instanceof String) {
+            return new StringConstant((String) value);
         } else {
-            throw new Error("Unsupported value type: " + value.getClass().getName());
+            // For other object types, use toString representation
+            return new StringConstant(value.toString());
         }
     }
 
