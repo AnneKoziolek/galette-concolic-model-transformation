@@ -4,6 +4,9 @@ import edu.neu.ccs.prl.galette.concolic.knarr.runtime.GaletteSymbolicator;
 import edu.neu.ccs.prl.galette.examples.models.source.BrakeDiscSource;
 import edu.neu.ccs.prl.galette.examples.models.target.BrakeDiscTarget;
 import edu.neu.ccs.prl.galette.examples.transformation.BrakeDiscTransformation;
+import edu.neu.ccs.prl.galette.examples.transformation.BrakeDiscTransformationClean;
+import edu.neu.ccs.prl.galette.examples.transformation.BrakeDiscTransformationSymbolic;
+import edu.neu.ccs.prl.galette.examples.transformation.SymbolicExecutionWrapper;
 import java.util.Scanner;
 
 /**
@@ -60,31 +63,38 @@ public class ModelTransformationExample {
         boolean running = true;
 
         while (running) {
-            System.out.print("\nSelect an option (1-5): ");
+            System.out.print("\nSelect an option (1-7): ");
 
             try {
                 int choice = scanner.nextInt();
+                scanner.nextLine(); // Consume the newline character
                 System.out.println();
 
                 switch (choice) {
                     case 1:
-                        runInteractiveTransformation(sourceModel);
+                        runCleanTransformation(sourceModel, scanner);
                         break;
                     case 2:
-                        runPathExplorationDemo(sourceModel);
+                        runSymbolicTransformation(sourceModel, scanner);
                         break;
                     case 3:
-                        runSymbolicAnalysisDemo(sourceModel);
+                        runComparisonDemo(sourceModel, scanner);
                         break;
                     case 4:
-                        showDetailedExample(sourceModel);
+                        runPathExplorationDemo(sourceModel);
                         break;
                     case 5:
+                        runLegacySymbolicDemo(sourceModel, scanner);
+                        break;
+                    case 6:
+                        showDetailedExample(sourceModel);
+                        break;
+                    case 7:
                         running = false;
                         System.out.println("Goodbye!");
                         break;
                     default:
-                        System.out.println("Invalid option. Please select 1-5.");
+                        System.out.println("Invalid option. Please select 1-7.");
                 }
 
                 if (running) {
@@ -107,11 +117,13 @@ public class ModelTransformationExample {
      */
     private static void showMenu() {
         System.out.println("Available options:");
-        System.out.println("1. Interactive transformation (enter thickness manually)");
-        System.out.println("2. Path exploration demo (test both execution paths)");
-        System.out.println("3. Symbolic analysis demo (detailed constraint tracking)");
-        System.out.println("4. Show detailed example with explanations");
-        System.out.println("5. Exit");
+        System.out.println("1. Clean transformation (business logic only, no symbolic execution)");
+        System.out.println("2. Symbolic transformation (with path constraint collection)");
+        System.out.println("3. Compare clean vs symbolic approaches");
+        System.out.println("4. Path exploration demo (test both execution paths)");
+        System.out.println("5. Legacy symbolic demo (original implementation)");
+        System.out.println("6. Show detailed example with explanations");
+        System.out.println("7. Exit");
     }
 
     /**
@@ -124,16 +136,74 @@ public class ModelTransformationExample {
     }
 
     /**
-     * Run interactive transformation where user enters thickness.
-     *
-     * @param source Source model to transform
+     * Run clean transformation (business logic only).
      */
-    private static void runInteractiveTransformation(BrakeDiscSource source) {
-        System.out.println("=== INTERACTIVE TRANSFORMATION ===");
+    private static void runCleanTransformation(BrakeDiscSource source, Scanner scanner) {
+        System.out.println("=== CLEAN TRANSFORMATION (NO SYMBOLIC EXECUTION) ===");
+        System.out.println();
+        System.out.println("Source brake disc: " + source);
+        System.out.print("Please enter the brake disc thickness (mm): ");
+
+        double thickness = scanner.nextDouble();
+
+        System.out.println("Transforming with thickness: " + thickness + " mm");
+        BrakeDiscTarget result = BrakeDiscTransformationClean.transform(source, thickness);
+
+        System.out.println("Transformation complete.");
+        System.out.println("Additional stiffness: " + (result.hasAdditionalStiffness() ? "Yes" : "No"));
+
+        System.out.println();
+        System.out.println("=== TRANSFORMATION RESULTS ===");
+        System.out.println(result.getGeometricSummary());
+        System.out.println("\nNote: This version uses pure business logic without symbolic execution.");
+    }
+
+    /**
+     * Run symbolic transformation with path constraint collection.
+     */
+    private static void runSymbolicTransformation(BrakeDiscSource source, Scanner scanner) {
+        System.out.println("=== SYMBOLIC TRANSFORMATION (WITH PATH CONSTRAINTS) ===");
+        System.out.println();
+        System.out.println("Source brake disc: " + source);
+        System.out.print("Please enter the brake disc thickness (mm): ");
+
+        double thickness = scanner.nextDouble();
+
+        SymbolicExecutionWrapper.reset();
+        BrakeDiscTarget result = BrakeDiscTransformationSymbolic.transformSymbolic(source, thickness, "user_thickness");
+
+        System.out.println();
+        System.out.println("=== TRANSFORMATION RESULTS ===");
+        System.out.println(result.getGeometricSummary());
+        System.out.println("\nNote: This version collects path constraints for symbolic analysis.");
+    }
+
+    /**
+     * Compare clean vs symbolic transformation approaches.
+     */
+    private static void runComparisonDemo(BrakeDiscSource source, Scanner scanner) {
+        System.out.println("=== COMPARISON: CLEAN VS SYMBOLIC TRANSFORMATION ===");
         System.out.println();
 
+        System.out.print("Enter thickness value for comparison: ");
+        double thickness = scanner.nextDouble();
+
+        BrakeDiscTransformationSymbolic.compareTransformationMethods(source, thickness);
+    }
+
+    /**
+     * Run legacy symbolic demo (original implementation).
+     */
+    private static void runLegacySymbolicDemo(BrakeDiscSource source, Scanner scanner) {
+        System.out.println("=== LEGACY SYMBOLIC DEMO (ORIGINAL IMPLEMENTATION) ===");
+        System.out.println();
+        System.out.println("Source brake disc: " + source);
+        System.out.print("Please enter the brake disc thickness (mm): ");
+
+        double thickness = scanner.nextDouble();
+
         GaletteSymbolicator.reset();
-        BrakeDiscTarget result = BrakeDiscTransformation.transformInteractive(source);
+        BrakeDiscTarget result = BrakeDiscTransformation.transform(source, thickness);
 
         System.out.println();
         System.out.println("=== TRANSFORMATION RESULTS ===");
@@ -142,17 +212,15 @@ public class ModelTransformationExample {
 
     /**
      * Demonstrate path exploration with different thickness values.
-     *
-     * @param source Source model to transform
      */
     private static void runPathExplorationDemo(BrakeDiscSource source) {
         System.out.println("=== PATH EXPLORATION DEMONSTRATION ===");
         System.out.println();
         System.out.println("This demo shows how different input values lead to different");
-        System.out.println("execution paths in the transformation logic.");
+        System.out.println("execution paths with path constraint collection.");
         System.out.println();
 
-        BrakeDiscTransformation.demonstratePathExploration(source);
+        BrakeDiscTransformationSymbolic.demonstratePathExploration(source);
     }
 
     /**

@@ -3,6 +3,7 @@ package edu.neu.ccs.prl.galette.examples.transformation;
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.GaletteSymbolicator;
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.PathConditionWrapper;
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.PathUtils;
+import edu.neu.ccs.prl.galette.concolic.knarr.runtime.SymbolicComparison;
 import edu.neu.ccs.prl.galette.examples.models.source.BrakeDiscSource;
 import edu.neu.ccs.prl.galette.examples.models.target.BrakeDiscTarget;
 import edu.neu.ccs.prl.galette.internal.runtime.Tag;
@@ -104,7 +105,12 @@ public class BrakeDiscTransformation {
         // This conditional creates two possible execution paths:
         // Path 1: thickness > 10 → additionalStiffness = true
         // Path 2: thickness ≤ 10 → additionalStiffness = false
-        if (userInputThickness > STIFFNESS_THRESHOLD) {
+
+        // SYMBOLIC EXECUTION: Use symbolic comparison to collect path constraints
+        boolean isThick =
+                SymbolicComparison.isThicknessGreaterThan(userInputThickness, thicknessTag, STIFFNESS_THRESHOLD);
+
+        if (isThick) {
             target.setAdditionalStiffness(true);
             System.out.println("→ Path taken: thickness > 10, setting additionalStiffness = true");
         } else {
