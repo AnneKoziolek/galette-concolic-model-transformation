@@ -448,4 +448,32 @@ public class GaletteSymbolicator {
             return "InputSolution" + values;
         }
     }
+
+    // ==================== ARRAY SYMBOLIC EXECUTION SUPPORT ====================
+
+    /**
+     * Associate a tag with a Green expression.
+     *
+     * @param tag The Galette tag
+     * @param expression The Green expression
+     */
+    public static void associateTagWithExpression(Tag tag, Expression expression) {
+        if (tag != null && expression != null) {
+            tagToExpression.put(tag, expression);
+        }
+    }
+
+    /**
+     * Clear tag-expression associations.
+     */
+    public static void clearTagExpressionMap() {
+        tagToExpression.clear();
+    }
+
+    /**
+     * Get count of tag-expression associations.
+     */
+    public static int getTagExpressionCount() {
+        return tagToExpression.size();
+    }
 }

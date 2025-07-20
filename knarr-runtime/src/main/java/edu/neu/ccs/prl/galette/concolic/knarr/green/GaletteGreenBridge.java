@@ -197,14 +197,56 @@ public class GaletteGreenBridge {
             return existing;
         }
 
-        Object[] labels = tag.getLabels();
-        if (labels.length == 0) {
+        return null; // No expression found
+    }
+
+    /**
+     * Convert a Tag to a Green expression for array operations.
+     *
+     * @param tag The Galette tag
+     * @return Green Expression representing the symbolic value
+     */
+    public static Expression tagToGreenExpression(Tag tag) {
+        if (tag == null || tag.isEmpty()) {
             return null;
         }
 
-        // Use the first label as the variable name
-        Object primaryLabel = labels[0];
-        return getOrCreateVariable(primaryLabel, 0); // Default to integer type
+        // Get or create expression for this tag
+        Expression expr = GaletteSymbolicator.getExpressionForTag(tag);
+        if (expr != null) {
+            return expr;
+        }
+
+        // Create new variable for this tag
+        Object[] labels = Tag.getLabels(tag);
+        if (labels != null && labels.length > 0) {
+            String varName = labels[0].toString();
+            return getOrCreateVariable(varName, 1); // Default to double type
+        }
+
+        return null;
+    }
+
+    /**
+     * Convert a Green expression back to a Galette Tag.
+     *
+     * @param expression The Green expression
+     * @param labelPrefix Prefix for the tag label
+     * @return Galette Tag representing the expression
+     */
+    public static Tag greenExpressionToTag(Expression expression, String labelPrefix) {
+        if (expression == null) {
+            return null;
+        }
+
+        // Create unique label for this expression
+        String label = labelPrefix + "_expr_" + System.identityHashCode(expression);
+
+        // Create tag and associate with expression
+        Tag tag = Tag.of(label);
+        GaletteSymbolicator.associateTagWithExpression(tag, expression);
+
+        return tag;
     }
 
     /**

@@ -22,13 +22,11 @@
             <version>${project.version}</version>
         </dependency>
         
-        <!-- Green constraint solver dependency (local jar) -->
+        <!-- Green constraint solver dependency -->
         <dependency>
             <groupId>za.ac.sun.cs.green</groupId>
             <artifactId>green</artifactId>
             <version>1.0-SNAPSHOT</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/../../green-solver/green/target/green-1.0-SNAPSHOT.jar</systemPath>
         </dependency>
         
         <!-- ASM dependencies for bytecode manipulation -->

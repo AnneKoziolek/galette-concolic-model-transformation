@@ -4,7 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import za.ac.sun.cs.green.expr.BinaryOperation;
 import za.ac.sun.cs.green.expr.Expression;
+import za.ac.sun.cs.green.expr.Operation;
 import za.ac.sun.cs.green.expr.Operation.Operator;
+import za.ac.sun.cs.green.expr.UnaryOperation;
 
 /**
  * Wrapper for managing path conditions in concolic execution.
@@ -128,6 +130,44 @@ public class PathConditionWrapper {
         PathConditionWrapper copy = new PathConditionWrapper();
         copy.constraints.addAll(this.constraints);
         return copy;
+    }
+
+    // ==================== LEGACY KNARR COMPATIBILITY ====================
+
+    /**
+     * Add a constraint operation (legacy Knarr compatibility).
+     *
+     * @param op The operation to add
+     */
+    public synchronized void _addDet(Operation op) {
+        addConstraint(op);
+    }
+
+    /**
+     * Add a binary operation constraint (legacy Knarr compatibility).
+     *
+     * @param op The operator
+     * @param left Left operand
+     * @param right Right operand
+     * @return The created operation
+     */
+    public synchronized Expression _addDet(Operator op, Expression left, Expression right) {
+        Operation ret = new BinaryOperation(op, left, right);
+        addConstraint(ret);
+        return ret;
+    }
+
+    /**
+     * Add a unary operation constraint (legacy Knarr compatibility).
+     *
+     * @param op The operator
+     * @param operand The operand
+     * @return The created operation
+     */
+    public synchronized Expression _addDet(Operator op, Expression operand) {
+        Operation ret = new UnaryOperation(op, operand);
+        addConstraint(ret);
+        return ret;
     }
 
     /**
