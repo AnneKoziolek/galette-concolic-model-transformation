@@ -126,6 +126,8 @@ public class BrakeDiscTransformationClean {
         System.out.println("Transformation complete.");
         System.out.println("Additional stiffness: " + (result.hasAdditionalStiffness() ? "Yes" : "No"));
 
+        scanner.close();
+
         return result;
     }
 
