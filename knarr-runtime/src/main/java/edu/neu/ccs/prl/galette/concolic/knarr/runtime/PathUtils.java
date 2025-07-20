@@ -248,4 +248,11 @@ public class PathUtils {
             this.tag = tag;
         }
     }
+
+    /**
+     * Reset the current path condition.
+     */
+    public static void resetPC() {
+        curPC = new PathConditionWrapper();
+    }
 }
