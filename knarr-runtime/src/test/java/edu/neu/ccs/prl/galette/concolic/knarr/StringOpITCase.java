@@ -32,7 +32,9 @@ public class StringOpITCase {
         String test = "This is a test";
         char tainted[] = new char[test.length()];
 
-        for (int i = 0; i < tainted.length; i++) tainted[i] = Symbolicator.symbolic("length_" + i, test.charAt(i));
+        for (int i = 0; i < tainted.length; i++) {
+            tainted[i] = Symbolicator.symbolic("length_" + i, test.charAt(i));
+        }
 
         String taintedString = new String(tainted, 0, tainted.length);
 

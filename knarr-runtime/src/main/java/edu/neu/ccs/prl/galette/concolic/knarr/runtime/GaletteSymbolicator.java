@@ -357,6 +357,16 @@ public class GaletteSymbolicator {
     }
 
     /**
+     * Get the expression associated with a tag.
+     *
+     * @param tag The tag to look up
+     * @return The associated expression, or null if not found
+     */
+    public static Expression getExpressionForTag(Tag tag) {
+        return tagToExpression.get(tag);
+    }
+
+    /**
      * Cleanup resources.
      */
     public static void cleanup() {

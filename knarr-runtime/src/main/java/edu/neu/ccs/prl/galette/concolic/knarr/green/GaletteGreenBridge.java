@@ -1,5 +1,6 @@
 package edu.neu.ccs.prl.galette.concolic.knarr.green;
 
+import edu.neu.ccs.prl.galette.concolic.knarr.runtime.GaletteSymbolicator;
 import edu.neu.ccs.prl.galette.internal.runtime.Tag;
 import java.util.HashMap;
 import java.util.Map;
@@ -86,7 +87,8 @@ public class GaletteGreenBridge {
      * @return Appropriately typed Green Variable
      */
     private static Variable createVariableForType(String baseName, Object value) {
-        String varName = baseName + "_" + variableCounter.incrementAndGet();
+        // Generate unique variable name to avoid collisions between different scopes
+        String varName = baseName + "_" + variableCounter.getAndIncrement();
 
         if (value instanceof Integer || value instanceof Short || value instanceof Byte) {
             return new IntVariable(varName, null, null);
@@ -176,5 +178,61 @@ public class GaletteGreenBridge {
      */
     public static int getVariableCount() {
         return labelToVariable.size();
+    }
+
+    /**
+     * Convert a Tag directly to a Green expression (simplified API).
+     *
+     * @param tag The Galette tag
+     * @return Green Expression, or null if tag is empty
+     */
+    public static Expression tagToExpression(Tag tag) {
+        if (tag == null || tag.isEmpty()) {
+            return null;
+        }
+
+        // First check if GaletteSymbolicator already has an expression for this tag
+        Expression existing = GaletteSymbolicator.getExpressionForTag(tag);
+        if (existing != null) {
+            return existing;
+        }
+
+        Object[] labels = tag.getLabels();
+        if (labels.length == 0) {
+            return null;
+        }
+
+        // Use the first label as the variable name
+        Object primaryLabel = labels[0];
+        return getOrCreateVariable(primaryLabel, 0); // Default to integer type
+    }
+
+    /**
+     * Check if a tag has an associated expression.
+     *
+     * @param tag The Galette tag to check
+     * @return true if the tag has an associated expression
+     */
+    public static boolean hasExpression(Tag tag) {
+        if (tag == null || tag.isEmpty()) {
+            return false;
+        }
+
+        Object[] labels = tag.getLabels();
+        if (labels.length == 0) {
+            return false;
+        }
+
+        return labelToVariable.containsKey(labels[0]);
+    }
+
+    /**
+     * Get variable by label.
+     *
+     * @param label The symbolic label
+     * @return Variable if it exists, null otherwise
+     */
+    public static Variable getVariable(Object label) {
+        return labelToVariable.get(label);
     }
 }
