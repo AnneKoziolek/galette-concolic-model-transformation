@@ -9,7 +9,7 @@ echo "🚀 Enhanced Galette Knarr Runtime Example"
 echo "=========================================="
 
 # TEMPORARY: Force clean rebuild (uncomment to always rebuild)
-FORCE_CLEAN_BUILD=false
+FORCE_CLEAN_BUILD=true
 
 # Function to check if compilation and instrumentation is needed
 needs_build() {

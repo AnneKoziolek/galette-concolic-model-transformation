@@ -9,12 +9,12 @@ The Knarr integration tries to add symbolic execution capabilities to model tran
 
 ## What is Knarr?
 
-Knarr is a symbolic execution framework that has been **fully migrated** from the Phosphor dynamic taint analysis tool to use Galette's taint tracking infrastructure. This integration provides:
+Knarr is a symbolic execution framework that has been migrated from the Phosphor dynamic taint analysis tool to use Galette's taint tracking infrastructure. This integration provides:
 
 - **Complete array symbolic execution** with symbolic indexing and bounds checking
 - **Comprehensive string symbolic execution** with character-level tracking
-- **Path constraint collection** for analyzing conditional branches
-- **Coverage tracking infrastructure** with code, path, branch, and method coverage
+- **Path constraint collection** for analyzing conditional branches (but does not support Java operators as instrumentation is missing)
+- **Coverage tracking infrastructure** with code, path, branch, and method coverage (to be checked)
 - **Testing framework** for systematic validation and performance benchmarking
 - **Integration with constraint solvers** (Green/Z3) for automated test generation
 
@@ -221,10 +221,10 @@ The integration follows clean architecture principles with clear separation of c
 
 ### Core Components
 
-1. **`BrakeDiscTransformationClean`** - Pure business logic
-   - Contains only transformation rules and calculations
-   - No symbolic execution dependencies
-   - Easy to test and maintain
+1. **`BrakeDiscTransformation`** - Business logic with integrated symbolic execution support
+   - Contains transformation rules and calculations
+   - Uses SymbolicComparison for automatic path constraint collection
+   - Supports both concrete and symbolic execution modes
 
 2. **`SymbolicExecutionWrapper`** - Symbolic execution infrastructure
    - Handles symbolic value creation and tracking

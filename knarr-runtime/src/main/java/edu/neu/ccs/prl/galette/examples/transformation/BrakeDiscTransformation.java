@@ -1,18 +1,17 @@
 package edu.neu.ccs.prl.galette.examples.transformation;
 
-import edu.neu.ccs.prl.galette.concolic.knarr.runtime.SymbolicComparison;
 import edu.neu.ccs.prl.galette.examples.models.source.BrakeDiscSource;
 import edu.neu.ccs.prl.galette.examples.models.target.BrakeDiscTarget;
 import java.util.Scanner;
+import za.ac.sun.cs.green.expr.Operation.Operator;
 
 /**
- * Model transformation logic for brake disc models with integrated symbolic execution support.
+ * Model transformation logic for brake disc models with symbolic execution support.
  *
  * This class contains business logic for transforming brake disc models from source to
- * target format, with integrated support for symbolic execution and path constraint collection.
- *
- * The transformation uses SymbolicComparison methods to automatically collect path constraints
- * when symbolic values are present, enabling concolic execution and automated test generation.
+ * target format. Symbolic execution concerns are handled through the SymbolicExecutionWrapper,
+ * keeping the transformation logic focused on business rules while enabling automatic
+ * path constraint collection when symbolic values are present.
  *
  * @author [Anne Koziolek](https://github.com/AnneKoziolek)
  */
@@ -84,21 +83,8 @@ public class BrakeDiscTransformation {
      * Apply engineering rules based on thickness and other properties.
      */
     private static void applyEngineeringRules(double thickness, BrakeDiscTarget target) {
-        // Rule: If thickness > 10mm, then additional stiffness is present
-        System.out.println("🔍 GALETTE DEBUG: About to perform comparison");
-        System.out.println("   thickness = " + thickness);
-        System.out.println("   STIFFNESS_THRESHOLD = " + STIFFNESS_THRESHOLD);
-
-        // Check if the thickness value has a Galette tag
-        edu.neu.ccs.prl.galette.internal.runtime.Tag thicknessTag =
-                edu.neu.ccs.prl.galette.internal.runtime.Tainter.getTag(thickness);
-        System.out.println("   thickness tag: " + (thicknessTag != null ? thicknessTag : "no tag"));
-
-        // Use SymbolicComparison to ensure path constraints are collected for symbolic values
-        boolean hasAdditionalStiffness = SymbolicComparison.greaterThan(
-                thickness, thicknessTag, STIFFNESS_THRESHOLD, null // threshold is concrete, so no tag
-                );
-        System.out.println("   comparison result: " + hasAdditionalStiffness);
+        // Rule: If thickness > STIFFNESS_THRESHOLD, then additional stiffness is present
+        boolean hasAdditionalStiffness = SymbolicExecutionWrapper.compare(thickness, STIFFNESS_THRESHOLD, Operator.GT);
 
         target.setAdditionalStiffness(hasAdditionalStiffness);
     }

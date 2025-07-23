@@ -9,6 +9,7 @@ import edu.neu.ccs.prl.galette.examples.models.target.BrakeDiscTarget;
 import edu.neu.ccs.prl.galette.internal.runtime.Tag;
 import java.util.*;
 import za.ac.sun.cs.green.expr.*;
+import za.ac.sun.cs.green.expr.Operation;
 
 /**
  * Wrapper class that handles symbolic execution concerns separately from business logic.
@@ -167,6 +168,47 @@ public class SymbolicExecutionWrapper {
     }
 
     /**
+     * Perform symbolic-aware comparison between two double values.
+     *
+     * This method handles the symbolic execution concerns, extracting tags from values
+     * and calling the appropriate SymbolicComparison method based on the operator.
+     *
+     * @param leftValue The left operand (may be Galette-tagged)
+     * @param rightValue The right operand (typically concrete)
+     * @param operator The comparison operator from Green solver
+     * @return The result of the comparison
+     */
+    public static boolean compare(double leftValue, double rightValue, Operation.Operator operator) {
+        // Extract tags from both values
+        edu.neu.ccs.prl.galette.internal.runtime.Tag leftTag =
+                edu.neu.ccs.prl.galette.internal.runtime.Tainter.getTag(leftValue);
+        edu.neu.ccs.prl.galette.internal.runtime.Tag rightTag =
+                edu.neu.ccs.prl.galette.internal.runtime.Tainter.getTag(rightValue);
+
+        // Switch on the comparison operator and call appropriate SymbolicComparison method
+        switch (operator) {
+            case GT: // Greater than >
+                return SymbolicComparison.greaterThan(leftValue, leftTag, rightValue, rightTag);
+
+            case GE: // Greater than or equal >=
+                return SymbolicComparison.greaterThanOrEqual(leftValue, leftTag, rightValue, rightTag);
+
+            case LT: // Less than <
+                return SymbolicComparison.lessThan(leftValue, leftTag, rightValue, rightTag);
+
+            case LE: // Less than or equal <=
+                return SymbolicComparison.lessThanOrEqual(leftValue, leftTag, rightValue, rightTag);
+
+            case EQ: // Equal ==
+                return SymbolicComparison.equal(leftValue, leftTag, rightValue, rightTag);
+
+            default:
+                throw new IllegalArgumentException(
+                        "Unsupported comparison operator: " + operator + ". Supported operators: GT, GE, LT, LE, EQ");
+        }
+    }
+
+    /**
      * Collect and analyze the current path constraints.
      *
      * @return Analysis results as a formatted string
@@ -314,7 +356,7 @@ public class SymbolicExecutionWrapper {
 
         // Use the clean transformation with the Galette-tagged value
         // The comparison operations will automatically be intercepted by Galette
-        BrakeDiscTarget target = BrakeDiscTransformationClean.transform(source, taggedThickness);
+        BrakeDiscTarget target = BrakeDiscTransformation.transform(source, taggedThickness);
 
         // Add symbolic execution analysis for the conditional logic
         System.out.println("\n=== Symbolic Condition Analysis ===");
@@ -424,7 +466,7 @@ public class SymbolicExecutionWrapper {
 
         // Clean transformation (no symbolic execution)
         System.out.println("\n1. Clean Transformation (Business Logic Only):");
-        BrakeDiscTarget cleanResult = BrakeDiscTransformationClean.transform(source, thickness);
+        BrakeDiscTarget cleanResult = BrakeDiscTransformation.transform(source, thickness);
         System.out.println("Result: " + cleanResult);
 
         // Reset and run symbolic transformation
@@ -491,7 +533,7 @@ public class SymbolicExecutionWrapper {
                 "Created symbolic tag for thickness: " + (symbolicThickness.isSymbolic() ? "SUCCESS" : "FAILED"));
 
         // Use clean transformation for core logic
-        BrakeDiscTarget target = BrakeDiscTransformationClean.transform(source, thickness);
+        BrakeDiscTarget target = BrakeDiscTransformation.transform(source, thickness);
 
         // Perform geometric calculations output
         System.out.println("\n=== Performing Geometric Calculations ===");

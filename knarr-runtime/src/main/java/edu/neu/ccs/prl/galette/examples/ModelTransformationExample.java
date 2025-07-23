@@ -5,7 +5,7 @@ import edu.neu.ccs.prl.galette.concolic.knarr.runtime.PathConditionWrapper;
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.PathUtils;
 import edu.neu.ccs.prl.galette.examples.models.source.BrakeDiscSource;
 import edu.neu.ccs.prl.galette.examples.models.target.BrakeDiscTarget;
-import edu.neu.ccs.prl.galette.examples.transformation.BrakeDiscTransformationClean;
+import edu.neu.ccs.prl.galette.examples.transformation.BrakeDiscTransformation;
 import edu.neu.ccs.prl.galette.examples.transformation.SymbolicExecutionWrapper;
 import edu.neu.ccs.prl.galette.internal.runtime.Tag;
 import java.util.ArrayList;
@@ -112,8 +112,8 @@ public class ModelTransformationExample {
      */
     private static void showMenu() {
         System.out.println("Available options:");
-        System.out.println("1. Clean transformation (business logic only, no symbolic execution)");
-        System.out.println("2. True concolic execution with automated path exploration");
+        System.out.println("1. Standard transformation (concrete execution, no path exploration)");
+        System.out.println("2. Concolic execution with automated path constraint collection and exploration");
         System.out.println("3. Exit");
     }
 
@@ -138,7 +138,7 @@ public class ModelTransformationExample {
         double thickness = scanner.nextDouble();
 
         System.out.println("Transforming with thickness: " + thickness + " mm");
-        BrakeDiscTarget result = BrakeDiscTransformationClean.transform(source, thickness);
+        BrakeDiscTarget result = BrakeDiscTransformation.transform(source, thickness);
 
         System.out.println("Transformation complete.");
         System.out.println("Additional stiffness: " + (result.hasAdditionalStiffness() ? "Yes" : "No"));
@@ -247,11 +247,6 @@ public class ModelTransformationExample {
         // Boundary analysis
         System.out.println("\n=== BOUNDARY CONDITION ANALYSIS ===");
         analyzeBoundaryConditions(exploredInputs);
-
-        System.out.println("\n" + repeatString("=", 70));
-        System.out.println("CONCOLIC EXECUTION COMPLETE");
-        System.out.println("Successfully demonstrated automated path exploration using Galette/Knarr");
-        System.out.println(repeatString("=", 70));
     }
 
     /**
@@ -277,22 +272,21 @@ public class ModelTransformationExample {
 
         // Create symbolic value for thickness - we need to get the TAGGED VALUE, not just the tag
         Tag symbolicTag = GaletteSymbolicator.makeSymbolicDouble(label, thickness);
-        
+
         // The problem: makeSymbolicDouble() creates a tagged value internally but only returns the tag!
         // We need to manually create the tagged value and use that
         double taggedThickness = edu.neu.ccs.prl.galette.internal.runtime.Tainter.setTag(thickness, symbolicTag);
-        
+
         // Verify the tag was applied
         Tag verifyTag = edu.neu.ccs.prl.galette.internal.runtime.Tainter.getTag(taggedThickness);
         System.out.println("Created symbolic value: " + label + " = " + thickness + " (tag: "
                 + (verifyTag != null ? verifyTag : "no tag") + ")");
 
         // Execute the transformation with the TAGGED value (this is the key fix!)
-        BrakeDiscTarget result = BrakeDiscTransformationClean.transform(source, taggedThickness);
+        BrakeDiscTarget result = BrakeDiscTransformation.transform(source, taggedThickness);
 
-        // Path constraints are automatically collected during the transformation
-        // No need to manually recreate the conditional logic
-        System.out.println("Path constraints automatically collected during transformation execution");
+        // Path constraints are automatically collected during the transformation via SymbolicComparison
+        System.out.println("✅ Path constraints collected via SymbolicComparison.greaterThan() integration");
 
         // Collect path constraints
         PathConditionWrapper pc = PathUtils.getCurPC();
