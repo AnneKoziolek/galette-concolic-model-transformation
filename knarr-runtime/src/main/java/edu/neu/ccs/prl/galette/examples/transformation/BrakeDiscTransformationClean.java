@@ -1,5 +1,6 @@
 package edu.neu.ccs.prl.galette.examples.transformation;
 
+import edu.neu.ccs.prl.galette.concolic.knarr.runtime.SymbolicComparison;
 import edu.neu.ccs.prl.galette.examples.models.source.BrakeDiscSource;
 import edu.neu.ccs.prl.galette.examples.models.target.BrakeDiscTarget;
 import java.util.Scanner;
@@ -30,7 +31,7 @@ public class BrakeDiscTransformationClean {
     /**
      * Threshold for additional stiffness determination.
      */
-    private static final double STIFFNESS_THRESHOLD = 10.0; // mm
+    private static final double STIFFNESS_THRESHOLD = 60.0; // mm
 
     /**
      * Transform a source brake disc model to a target model with enhanced properties.
@@ -94,7 +95,10 @@ public class BrakeDiscTransformationClean {
                 edu.neu.ccs.prl.galette.internal.runtime.Tainter.getTag(thickness);
         System.out.println("   thickness tag: " + (thicknessTag != null ? thicknessTag : "no tag"));
 
-        boolean hasAdditionalStiffness = thickness > STIFFNESS_THRESHOLD;
+        // Use SymbolicComparison to ensure path constraints are collected for symbolic values
+        boolean hasAdditionalStiffness = SymbolicComparison.greaterThan(
+                thickness, thicknessTag, STIFFNESS_THRESHOLD, null // threshold is concrete, so no tag
+                );
         System.out.println("   comparison result: " + hasAdditionalStiffness);
 
         target.setAdditionalStiffness(hasAdditionalStiffness);

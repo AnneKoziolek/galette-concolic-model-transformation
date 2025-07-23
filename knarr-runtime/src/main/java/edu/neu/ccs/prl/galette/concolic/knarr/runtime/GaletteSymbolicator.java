@@ -352,11 +352,11 @@ public class GaletteSymbolicator {
             variables.add(((Variable) expr).getName());
         } else if (expr instanceof BinaryOperation) {
             BinaryOperation binOp = (BinaryOperation) expr;
-            extractVariableNamesRecursive(binOp.getLeftOperand(), variables);
-            extractVariableNamesRecursive(binOp.getRightOperand(), variables);
+            extractVariableNamesRecursive(binOp.left, variables);
+            extractVariableNamesRecursive(binOp.right, variables);
         } else if (expr instanceof UnaryOperation) {
             UnaryOperation unOp = (UnaryOperation) expr;
-            extractVariableNamesRecursive(unOp.getOperand(), variables);
+            extractVariableNamesRecursive(unOp.getOperand(0), variables);
         }
     }
 
@@ -376,10 +376,10 @@ public class GaletteSymbolicator {
             }
 
             // Recursively search in operands
-            Double leftResult = extractThresholdForVariable(binOp.getLeftOperand(), targetVariable);
+            Double leftResult = extractThresholdForVariable(binOp.left, targetVariable);
             if (leftResult != null) return leftResult;
 
-            return extractThresholdForVariable(binOp.getRightOperand(), targetVariable);
+            return extractThresholdForVariable(binOp.right, targetVariable);
         }
 
         return null;
@@ -428,10 +428,10 @@ public class GaletteSymbolicator {
             }
 
             // Recursively search in operands
-            Operation.Operator leftResult = extractOperatorForVariable(binOp.getLeftOperand(), targetVariable);
+            Operation.Operator leftResult = extractOperatorForVariable(binOp.left, targetVariable);
             if (leftResult != null) return leftResult;
 
-            return extractOperatorForVariable(binOp.getRightOperand(), targetVariable);
+            return extractOperatorForVariable(binOp.right, targetVariable);
         }
 
         return null;
@@ -453,8 +453,8 @@ public class GaletteSymbolicator {
      * Extract variable name from binary operation (assumes one operand is variable, other is constant).
      */
     private static String extractVariableName(BinaryOperation binOp) {
-        Expression left = binOp.getLeftOperand();
-        Expression right = binOp.getRightOperand();
+        Expression left = binOp.left;
+        Expression right = binOp.right;
 
         if (left instanceof Variable) {
             return ((Variable) left).getName();
@@ -469,8 +469,8 @@ public class GaletteSymbolicator {
      * Extract constant value from binary operation.
      */
     private static Double extractConstantValue(BinaryOperation binOp) {
-        Expression left = binOp.getLeftOperand();
-        Expression right = binOp.getRightOperand();
+        Expression left = binOp.left;
+        Expression right = binOp.right;
 
         if (left instanceof RealConstant) {
             return ((RealConstant) left).getValue();

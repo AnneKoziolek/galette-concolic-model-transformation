@@ -275,13 +275,20 @@ public class ModelTransformationExample {
         GaletteSymbolicator.reset();
         PathUtils.resetPC();
 
-        // Create symbolic value for thickness
+        // Create symbolic value for thickness - we need to get the TAGGED VALUE, not just the tag
         Tag symbolicTag = GaletteSymbolicator.makeSymbolicDouble(label, thickness);
-        System.out.println("Created symbolic value: " + label + " = " + thickness + " (symbolic: "
-                + (symbolicTag != null && !symbolicTag.isEmpty()) + ")");
+        
+        // The problem: makeSymbolicDouble() creates a tagged value internally but only returns the tag!
+        // We need to manually create the tagged value and use that
+        double taggedThickness = edu.neu.ccs.prl.galette.internal.runtime.Tainter.setTag(thickness, symbolicTag);
+        
+        // Verify the tag was applied
+        Tag verifyTag = edu.neu.ccs.prl.galette.internal.runtime.Tainter.getTag(taggedThickness);
+        System.out.println("Created symbolic value: " + label + " = " + thickness + " (tag: "
+                + (verifyTag != null ? verifyTag : "no tag") + ")");
 
-        // Execute the transformation
-        BrakeDiscTarget result = BrakeDiscTransformationClean.transform(source, thickness);
+        // Execute the transformation with the TAGGED value (this is the key fix!)
+        BrakeDiscTarget result = BrakeDiscTransformationClean.transform(source, taggedThickness);
 
         // Path constraints are automatically collected during the transformation
         // No need to manually recreate the conditional logic

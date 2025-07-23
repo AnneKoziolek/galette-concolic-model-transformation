@@ -275,7 +275,34 @@ public class SymbolicExecutionWrapper {
         System.out.println("Source model: " + source);
         System.out.println("User input thickness: " + thicknessValue + " mm");
 
+        // Debug: Check if Galette is instrumented properly
+        System.out.println("🔍 GALETTE INSTRUMENTATION DEBUG:");
+        try {
+            // Test basic Galette functionality
+            double testValue = 42.0;
+            edu.neu.ccs.prl.galette.internal.runtime.Tag testTag =
+                    edu.neu.ccs.prl.galette.internal.runtime.Tag.of("test");
+            System.out.println("   Created test tag: " + testTag);
+
+            double taggedTestValue = edu.neu.ccs.prl.galette.internal.runtime.Tainter.setTag(testValue, testTag);
+            System.out.println("   Tagged test value: " + taggedTestValue);
+
+            edu.neu.ccs.prl.galette.internal.runtime.Tag retrievedTag =
+                    edu.neu.ccs.prl.galette.internal.runtime.Tainter.getTag(taggedTestValue);
+            System.out.println("   Retrieved test tag: " + (retrievedTag != null ? retrievedTag : "no tag"));
+
+            if (retrievedTag != null) {
+                System.out.println("   ✅ Basic Galette tagging is working!");
+            } else {
+                System.out.println("   ❌ Basic Galette tagging is NOT working - instrumentation issue!");
+            }
+        } catch (Exception e) {
+            System.out.println("   ❌ Exception during Galette test: " + e.getMessage());
+            e.printStackTrace();
+        }
+
         // Create Galette-tagged symbolic value for the external input
+        System.out.println("\n🏷️ Creating symbolic value for transformation input:");
         double taggedThickness = edu.neu.ccs.prl.galette.internal.runtime.Tainter.setTag(
                 thicknessValue, edu.neu.ccs.prl.galette.internal.runtime.Tag.of(thicknessLabel));
 
@@ -291,7 +318,7 @@ public class SymbolicExecutionWrapper {
 
         // Add symbolic execution analysis for the conditional logic
         System.out.println("\n=== Symbolic Condition Analysis ===");
-        analyzeConditionalLogic(new SymbolicValue<>(thicknessLabel, taggedThickness, true), target);
+        analyzeConditionalLogic(new SymbolicValue<>(thicknessLabel, taggedThickness), target);
 
         // Display path constraint analysis
         displayPathConstraintAnalysis();

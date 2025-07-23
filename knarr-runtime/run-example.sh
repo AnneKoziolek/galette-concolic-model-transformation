@@ -8,8 +8,16 @@ set -e  # Exit on any error
 echo "🚀 Enhanced Galette Knarr Runtime Example"
 echo "=========================================="
 
+# TEMPORARY: Force clean rebuild (uncomment to always rebuild)
+FORCE_CLEAN_BUILD=false
+
 # Function to check if compilation and instrumentation is needed
 needs_build() {
+    # TEMPORARY: Force rebuild if flag is set
+    if [ "$FORCE_CLEAN_BUILD" = "true" ]; then
+        echo "🧹 FORCE_CLEAN_BUILD enabled - forcing complete rebuild"
+        return 0  # true - needs build
+    fi
     local target_dir="target/classes"
     local galette_java="target/galette/java"
     local main_class="$target_dir/edu/neu/ccs/prl/galette/examples/ModelTransformationExample.class"
@@ -48,8 +56,23 @@ needs_build() {
 if needs_build; then
     echo "📦 Building project with Galette instrumentation..."
     
-    # This will compile classes AND create instrumented Java via Maven plugin
-    mvn process-resources -q
+    # TEMPORARY: Clean rebuild - remove corrupted instrumented Java
+    if [ "$FORCE_CLEAN_BUILD" = "true" ] && [ -d "target/galette/java" ]; then
+        echo "🧹 Removing existing instrumented Java directory (corrupted)"
+        rm -rf target/galette/java
+    fi
+    
+    # Clean Maven target to force complete rebuild
+    echo "🧹 Cleaning Maven target directory..."
+    mvn clean -q
+    
+    # First compile the Java classes
+    echo "🔨 Compiling Java classes..."
+    mvn compile -q
+    
+    # Then create instrumented Java via Maven plugin
+    echo "⚙️ Creating instrumented Java installation..."
+    mvn process-test-resources -q
     
     if [ $? -ne 0 ]; then
         echo "❌ Build failed!"
