@@ -6,19 +6,17 @@ import edu.neu.ccs.prl.galette.examples.models.target.BrakeDiscTarget;
 import java.util.Scanner;
 
 /**
- * Clean model transformation logic for brake disc models.
+ * Model transformation logic for brake disc models with integrated symbolic execution support.
  *
- * This class contains pure business logic for transforming brake disc models
- * from source to target format. It is completely free of symbolic execution
- * concerns and focuses solely on the transformation logic.
+ * This class contains business logic for transforming brake disc models from source to
+ * target format, with integrated support for symbolic execution and path constraint collection.
  *
- * This demonstrates how model transformations should be written in a clean,
- * focused manner. Symbolic execution capabilities can be added separately
- * using the SymbolicExecutionWrapper without polluting this core logic.
+ * The transformation uses SymbolicComparison methods to automatically collect path constraints
+ * when symbolic values are present, enabling concolic execution and automated test generation.
  *
  * @author [Anne Koziolek](https://github.com/AnneKoziolek)
  */
-public class BrakeDiscTransformationClean {
+public class BrakeDiscTransformation {
 
     /**
      * Material density constants (kg/m³) for weight calculations.
@@ -36,11 +34,12 @@ public class BrakeDiscTransformationClean {
     /**
      * Transform a source brake disc model to a target model with enhanced properties.
      *
-     * This method contains pure business logic without any symbolic execution concerns.
-     * It focuses solely on the model transformation requirements.
+     * This method contains business logic with integrated symbolic execution support.
+     * When thickness values are tagged with Galette, path constraints are automatically
+     * collected during comparisons for concolic execution analysis.
      *
      * @param source The source brake disc model
-     * @param thickness The thickness value (from external input)
+     * @param thickness The thickness value (may be Galette-tagged for symbolic execution)
      * @return Enhanced target model with computed properties
      */
     public static BrakeDiscTarget transform(BrakeDiscSource source, double thickness) {
