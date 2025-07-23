@@ -70,7 +70,7 @@ public class ModelTransformationExample {
         boolean running = true;
 
         while (running) {
-            System.out.print("\nSelect an option (1-7): ");
+            System.out.print("\nSelect an option (1-3): ");
 
             try {
                 int choice = scanner.nextInt();
@@ -260,6 +260,7 @@ public class ModelTransformationExample {
     private static class ConcolicResult {
         final BrakeDiscTarget result;
         final String pathConstraint;
+
         ConcolicResult(BrakeDiscTarget result, String pathConstraint, boolean hasConstraints) {
             this.result = result;
             this.pathConstraint = pathConstraint;

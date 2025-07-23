@@ -225,6 +225,8 @@ mvn process-test-resources
 # Creates: TestGallete/vsum/target/galette/java/ (instrumented JDK)
 ```
 
+⚠️ **CRITICAL**: The Maven plugin approach above creates the instrumented Java, but you **MUST still run with the Galette agent** for path constraint collection. The instrumented Java is not sufficient alone - it must be combined with the `-javaagent` and `-Xbootclasspath/a` arguments.
+
 **Alternative: Manual instrumentation using Galette instrument JAR:**
 
 ```bash
@@ -744,6 +746,9 @@ echo "   Galette Agent: $GALETTE_AGENT"
 echo "   Classpath: Maven-managed (includes knarr-runtime JAR)"
 
 # CRITICAL: Use instrumented Java + Galette agent for path constraint collection
+# Both components are required:
+# 1. Instrumented Java (created by Maven plugin or manual instrumentation)
+# 2. Galette agent (via -javaagent and -Xbootclasspath/a)
 "$INSTRUMENTED_JAVA/bin/java" \
   -cp "$CLASSPATH" \
   -Xbootclasspath/a:"$GALETTE_AGENT" \
@@ -754,6 +759,7 @@ echo "   Classpath: Maven-managed (includes knarr-runtime JAR)"
 
 echo "✅ Symbolic execution complete"
 echo "Expected output: 'Path constraints: user_choice == X' (not 'no constraints')"
+echo "⚠️  If you see 'no constraints', verify both instrumented Java AND agent are used"
 ```
 
 **Update `TestGallete/vsum/run-galette.ps1`:**

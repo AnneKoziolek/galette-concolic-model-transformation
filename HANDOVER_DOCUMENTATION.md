@@ -272,15 +272,36 @@ mvn install:install-file \
 
 ### Runtime Requirements
 
+⚠️ **CRITICAL**: For path constraint collection, Galette requires **both** instrumented Java runtime AND the Galette agent. Without proper instrumentation, symbolic values are created but no path constraints are collected.
+
 **Java Agent Configuration:**
 ```bash
-# Required JVM arguments
+# Required JVM arguments (BOTH are necessary)
 -javaagent:/path/to/galette-agent-1.0.0-SNAPSHOT.jar
 -Xbootclasspath/a:/path/to/galette-agent-1.0.0-SNAPSHOT.jar
 
 # Optional debugging
 -Dgalette.coverage=true
 -Dsymbolic.execution.debug=true
+```
+
+**Creating Instrumented Java:**
+```bash
+# Option 1: Maven plugin (recommended)
+mvn process-test-resources  # Creates target/galette/java/
+
+# Option 2: Manual instrumentation
+java -jar galette-instrument.jar $JAVA_HOME ./instrumented-java
+```
+
+**Without proper instrumentation:**
+```
+Path constraints: no constraints  ❌
+```
+
+**With proper instrumentation:**
+```
+Path constraints: thickness > 10.0  ✅
 ```
 
 ## Integration Patterns
@@ -493,7 +514,11 @@ $JAVA_OPTS = $JAVA_OPTS -replace '/', '\'
 
 #### 4. No Symbolic Execution Activity
 
-**Issue:** "No path constraints collected"
+**Issue:** "No path constraints collected" despite symbolic values being created
+
+**Root Cause:** Missing Galette instrumentation. Path constraints are only collected when running with:
+1. **Instrumented Java runtime** (created by galette-instrument or Maven plugin)
+2. **Galette agent** (via -javaagent and -Xbootclasspath/a)
 
 **Diagnosis:**
 ```java
@@ -505,13 +530,21 @@ System.out.println("Symbolic active: " + symbolicInput.isSymbolic());
 PathConditionWrapper pc = PathUtils.getCurPC();
 System.out.println("Constraints collected: " + pc.size());
 
-// Verify Green solver integration
-try {
-    Expression expr = new IntConstant(42);
-    System.out.println("Green solver working: " + expr);
-} catch (Exception e) {
-    System.out.println("Green solver issue: " + e.getMessage());
-}
+// Verify Galette tag presence (requires instrumentation)
+Tag tag = Tainter.getTag(symbolicInput.getValue());
+System.out.println("Galette tag: " + (tag != null ? tag : "no tag - instrumentation missing"));
+```
+
+**Solution:**
+```bash
+# Verify you're using instrumented Java
+which java  # Should point to instrumented installation
+
+# Verify Galette agent arguments are present
+ps aux | grep java | grep javaagent  # Should show -javaagent:galette-agent.jar
+
+# Create instrumented Java if missing
+mvn process-test-resources  # or manual instrumentation
 ```
 
 #### 5. Memory Issues
@@ -538,14 +571,39 @@ java -Xmx4g -Xms1g -cp ... MainClass
    # Installs to ~/.m2/repository/edu/neu/ccs/prl/galette/knarr-runtime/1.0.0-SNAPSHOT/
    ```
 
-2. **Add Maven Dependency to TestGallete:**
+2. **Add Maven Dependency and Galette Plugin to TestGallete:**
    ```xml
    <!-- Add to TestGallete/vsum/pom.xml -->
-   <dependency>
-       <groupId>edu.neu.ccs.prl.galette</groupId>
-       <artifactId>knarr-runtime</artifactId>
-       <version>1.0.0-SNAPSHOT</version>
-   </dependency>
+   <dependencies>
+       <dependency>
+           <groupId>edu.neu.ccs.prl.galette</groupId>
+           <artifactId>knarr-runtime</artifactId>
+           <version>1.0.0-SNAPSHOT</version>
+       </dependency>
+   </dependencies>
+   
+   <build>
+       <plugins>
+           <!-- Add Galette Maven plugin for instrumentation -->
+           <plugin>
+               <groupId>edu.neu.ccs.prl.galette</groupId>
+               <artifactId>galette-maven-plugin</artifactId>
+               <version>1.0.0-SNAPSHOT</version>
+               <executions>
+                   <execution>
+                       <id>instrument</id>
+                       <goals>
+                           <goal>instrument</goal>
+                       </goals>
+                       <phase>process-test-resources</phase>
+                       <configuration>
+                           <outputDirectory>${project.build.directory}/galette/java/</outputDirectory>
+                       </configuration>
+                   </execution>
+               </executions>
+           </plugin>
+       </plugins>
+   </build>
    ```
 
 3. **Follow Integration Plan:**
