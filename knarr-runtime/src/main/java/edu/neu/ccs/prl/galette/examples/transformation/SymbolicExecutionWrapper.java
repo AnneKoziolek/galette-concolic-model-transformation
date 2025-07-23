@@ -7,9 +7,8 @@ import edu.neu.ccs.prl.galette.concolic.knarr.runtime.SymbolicComparison;
 import edu.neu.ccs.prl.galette.examples.models.source.BrakeDiscSource;
 import edu.neu.ccs.prl.galette.examples.models.target.BrakeDiscTarget;
 import edu.neu.ccs.prl.galette.internal.runtime.Tag;
-import za.ac.sun.cs.green.expr.*;
 import java.util.*;
-import java.util.stream.Collectors;
+import za.ac.sun.cs.green.expr.*;
 
 /**
  * Wrapper class that handles symbolic execution concerns separately from business logic.
@@ -329,7 +328,7 @@ public class SymbolicExecutionWrapper {
     /**
      * Extract threshold values dynamically from a constraint expression.
      */
-    private static Set<Double> extractThresholdsFromConstraint(Expression constraint) {
+    public static Set<Double> extractThresholdsFromConstraint(Expression constraint) {
         Set<Double> thresholds = new HashSet<>();
         extractThresholdsRecursive(constraint, thresholds);
         return thresholds;
@@ -345,11 +344,11 @@ public class SymbolicExecutionWrapper {
             thresholds.add((double) ((IntConstant) expr).getValue());
         } else if (expr instanceof BinaryOperation) {
             BinaryOperation binOp = (BinaryOperation) expr;
-            extractThresholdsRecursive(binOp.getLeftOperand(), thresholds);
-            extractThresholdsRecursive(binOp.getRightOperand(), thresholds);
+            extractThresholdsRecursive(binOp.getOperand(0), thresholds);
+            extractThresholdsRecursive(binOp.getOperand(1), thresholds);
         } else if (expr instanceof UnaryOperation) {
             UnaryOperation unOp = (UnaryOperation) expr;
-            extractThresholdsRecursive(unOp.getOperand(), thresholds);
+            extractThresholdsRecursive(unOp.getOperand(0), thresholds);
         }
     }
 

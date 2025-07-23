@@ -29,7 +29,9 @@ needs_compilation() {
     
     if [ $time_diff -lt 300 ]; then
         echo "Main class compiled $time_diff seconds ago (< 5 minutes) - skipping compilation"
-        return 1  # false - no compilation needed
+        echo "manual override... compile anyway"
+        return 0  # true - no compilation needed
+        #return 1  # false - no compilation needed
     fi
     
     # Check if any source files are newer than the compiled class
@@ -43,7 +45,8 @@ needs_compilation() {
     fi
     
     echo "Compiled classes are up-to-date (< 5 minutes old) - skipping compilation"
-    return 1  # false - no compilation needed
+    echo "manual override... compile anyway"
+    return 0  # false - no compilation needed
 }
 
 # Check if compilation is needed

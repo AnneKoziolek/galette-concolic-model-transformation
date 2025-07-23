@@ -9,8 +9,12 @@ import edu.neu.ccs.prl.galette.examples.transformation.BrakeDiscTransformationCl
 import edu.neu.ccs.prl.galette.examples.transformation.SymbolicExecutionWrapper;
 import edu.neu.ccs.prl.galette.internal.runtime.Tag;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Scanner;
+import java.util.Set;
+import za.ac.sun.cs.green.expr.Expression;
 
 /**
  * Main application demonstrating concolic execution in model transformations.
@@ -519,28 +523,91 @@ public class ModelTransformationExample {
         }
 
         // Fallback: Generate alternative inputs based on analysis of explored inputs
-        boolean hasLowValue = exploredInputs.stream().anyMatch(v -> v <= 10.0);
-        boolean hasHighValue = exploredInputs.stream().anyMatch(v -> v > 10.0);
+        // Use dynamic threshold discovery from path constraints
+        PathConditionWrapper pc = PathUtils.getCurPC();
+        Set<Double> discoveredThresholds = new HashSet<>();
+        if (pc != null && !pc.isEmpty()) {
+            List<Expression> constraints = pc.getConstraints();
+            for (Expression constraint : constraints) {
+                discoveredThresholds.addAll(SymbolicExecutionWrapper.extractThresholdsFromConstraint(constraint));
+            }
+        }
 
-        if (!hasLowValue) {
-            return 8.0; // Test the thickness <= 10 path
-        } else if (!hasHighValue) {
-            return 15.0; // Test the thickness > 10 path
+        // If we found thresholds from constraints, use them
+        if (!discoveredThresholds.isEmpty()) {
+            for (Double threshold : discoveredThresholds) {
+                boolean hasLowValue = exploredInputs.stream().anyMatch(v -> v <= threshold);
+                boolean hasHighValue = exploredInputs.stream().anyMatch(v -> v > threshold);
+
+                if (!hasLowValue) {
+                    return threshold - 1.0; // Test the thickness <= threshold path
+                } else if (!hasHighValue) {
+                    return threshold + 1.0; // Test the thickness > threshold path
+                }
+            }
+        }
+
+        // Ultimate fallback: try values around input distribution
+        if (!exploredInputs.isEmpty()) {
+            Collections.sort(new ArrayList<>(exploredInputs));
+            double minInput = Collections.min(exploredInputs);
+            double maxInput = Collections.max(exploredInputs);
+            double midpoint = (minInput + maxInput) / 2.0;
+
+            boolean hasLowValue = exploredInputs.stream().anyMatch(v -> v <= midpoint);
+            boolean hasHighValue = exploredInputs.stream().anyMatch(v -> v > midpoint);
+
+            if (!hasLowValue) {
+                return midpoint - 1.0;
+            } else if (!hasHighValue) {
+                return midpoint + 1.0;
+            }
         }
 
         return null; // No more obvious alternatives
     }
 
     /**
-     * Explore boundary conditions around the threshold value (10.0).
+     * Explore boundary conditions around discovered threshold values.
+     * Uses dynamic threshold discovery instead of hardcoded values.
      */
     private static Double exploreBoundaryConditions(List<Double> exploredInputs) {
-        double[] boundaryValues = {9.9, 10.0, 10.1, 9.99, 10.01};
+        // Discover thresholds dynamically from path constraints
+        PathConditionWrapper pc = PathUtils.getCurPC();
+        Set<Double> discoveredThresholds = new HashSet<>();
+        if (pc != null && !pc.isEmpty()) {
+            List<Expression> constraints = pc.getConstraints();
+            for (Expression constraint : constraints) {
+                discoveredThresholds.addAll(SymbolicExecutionWrapper.extractThresholdsFromConstraint(constraint));
+            }
+        }
 
-        for (double value : boundaryValues) {
-            if (!exploredInputs.contains(value)) {
-                System.out.println("Exploring boundary condition: " + value);
-                return value;
+        // Generate boundary values around discovered thresholds
+        for (Double threshold : discoveredThresholds) {
+            double[] boundaryValues = {threshold - 0.1, threshold, threshold + 0.1, threshold - 0.01, threshold + 0.01};
+
+            for (double value : boundaryValues) {
+                if (!exploredInputs.contains(value)) {
+                    System.out.println("Exploring boundary condition around threshold " + threshold + ": " + value);
+                    return value;
+                }
+            }
+        }
+
+        // Fallback: explore around input distribution patterns
+        if (!exploredInputs.isEmpty() && exploredInputs.size() > 1) {
+            List<Double> sortedInputs = new ArrayList<>(exploredInputs);
+            Collections.sort(sortedInputs);
+
+            for (int i = 0; i < sortedInputs.size() - 1; i++) {
+                double gap = sortedInputs.get(i + 1) - sortedInputs.get(i);
+                if (gap > 1.0) { // Significant gap might indicate boundary
+                    double boundaryValue = (sortedInputs.get(i) + sortedInputs.get(i + 1)) / 2.0;
+                    if (!exploredInputs.contains(boundaryValue)) {
+                        System.out.println("Exploring potential boundary: " + boundaryValue);
+                        return boundaryValue;
+                    }
+                }
             }
         }
 
@@ -556,10 +623,44 @@ public class ModelTransformationExample {
 
     /**
      * Analyze boundary conditions from explored inputs.
+     * Let Galette/Knarr constraint solver determine thresholds dynamically.
      */
     private static void analyzeBoundaryConditions(List<Double> inputs) {
-        double threshold = 10.0;
+        System.out.println("=== Dynamic Boundary Analysis (using Galette/Knarr) ===");
 
+        // Use Galette's constraint solver to analyze discovered thresholds
+        // rather than hardcoded knowledge
+        GaletteSymbolicator.InputSolution solution = GaletteSymbolicator.solvePathCondition();
+
+        if (solution != null) {
+            System.out.println("Constraint solver analysis:");
+            System.out.println("  Solution variables: " + solution.getLabels());
+            System.out.println("  Constraint solution: " + solution);
+
+            // Extract threshold information from solver solution
+            for (String label : solution.getLabels()) {
+                Object value = solution.getValue(label);
+                if (value instanceof Number && label.contains("thickness")) {
+                    double threshold = ((Number) value).doubleValue();
+                    System.out.println("  → Discovered threshold from constraints: " + threshold + " mm");
+
+                    // Analyze inputs around this discovered threshold
+                    analyzeInputsAroundThreshold(inputs, threshold);
+                }
+            }
+        } else {
+            // Fallback: analyze input distribution patterns
+            System.out.println("No constraint solution available, analyzing input patterns...");
+            analyzeInputPatterns(inputs);
+        }
+
+        System.out.println("✓ Boundary analysis complete - using dynamic constraint discovery");
+    }
+
+    /**
+     * Analyze inputs around a discovered threshold value.
+     */
+    private static void analyzeInputsAroundThreshold(List<Double> inputs, double threshold) {
         List<Double> belowThreshold = inputs.stream()
                 .filter(v -> v <= threshold)
                 .sorted()
@@ -572,28 +673,40 @@ public class ModelTransformationExample {
                 .distinct()
                 .collect(java.util.stream.Collectors.toList());
 
-        System.out.println("Threshold value: " + threshold + " mm");
-        System.out.println("Inputs ≤ threshold: " + belowThreshold);
-        System.out.println("Inputs > threshold: " + aboveThreshold);
+        System.out.println("    Inputs ≤ " + threshold + ": " + belowThreshold);
+        System.out.println("    Inputs > " + threshold + ": " + aboveThreshold);
 
         if (!belowThreshold.isEmpty() && !aboveThreshold.isEmpty()) {
-            System.out.println("✓ Both execution paths explored");
-            System.out.println("  Path 1 (≤ 10.0): additionalStiffness = false");
-            System.out.println("  Path 2 (> 10.0): additionalStiffness = true");
+            System.out.println("    ✓ Both execution paths explored");
         } else if (belowThreshold.isEmpty()) {
-            System.out.println("⚠ Missing exploration of thickness ≤ 10.0 path");
+            System.out.println("    ⚠ Missing exploration of ≤ " + threshold + " path");
         } else if (aboveThreshold.isEmpty()) {
-            System.out.println("⚠ Missing exploration of thickness > 10.0 path");
+            System.out.println("    ⚠ Missing exploration of > " + threshold + " path");
+        }
+    }
+
+    /**
+     * Analyze input patterns when no constraints are available.
+     */
+    private static void analyzeInputPatterns(List<Double> inputs) {
+        if (inputs.size() < 2) {
+            System.out.println("  Insufficient inputs for pattern analysis");
+            return;
         }
 
-        // Find closest values to boundary
-        if (!belowThreshold.isEmpty()) {
-            double closestBelow = belowThreshold.get(belowThreshold.size() - 1);
-            System.out.println("Closest value below threshold: " + closestBelow + " mm");
-        }
-        if (!aboveThreshold.isEmpty()) {
-            double closestAbove = aboveThreshold.get(0);
-            System.out.println("Closest value above threshold: " + closestAbove + " mm");
+        List<Double> sortedInputs = new ArrayList<>(inputs);
+        Collections.sort(sortedInputs);
+
+        System.out.println("  Input distribution: " + sortedInputs);
+        System.out.println("  Range: " + sortedInputs.get(0) + " to " + sortedInputs.get(sortedInputs.size() - 1));
+
+        // Look for gaps that might indicate boundaries
+        for (int i = 0; i < sortedInputs.size() - 1; i++) {
+            double gap = sortedInputs.get(i + 1) - sortedInputs.get(i);
+            if (gap > 2.0) { // Significant gap
+                System.out.println("  → Potential boundary around "
+                        + (sortedInputs.get(i) + sortedInputs.get(i + 1)) / 2.0 + " mm (gap: " + gap + ")");
+            }
         }
     }
 }
