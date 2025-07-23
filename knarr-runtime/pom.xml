@@ -55,6 +55,12 @@
         </dependency>
     </dependencies>
     
+    <properties>
+        <galette.agentJar>${edu.neu.ccs.prl.galette:galette-agent:jar}</galette.agentJar>
+        <galette.java>${project.build.directory}/galette/java/</galette.java>
+        <galette.cache>${project.build.directory}/galette/cache</galette.cache>
+    </properties>
+    
     <build>
         <plugins>
             <plugin>
@@ -71,6 +77,41 @@
                         <arg>-Xlint:unchecked</arg>
                     </compilerArgs>
                 </configuration>
+            </plugin>
+            
+            <!-- Galette Maven Plugin for Java Instrumentation -->
+            <plugin>
+                <groupId>edu.neu.ccs.prl.galette</groupId>
+                <artifactId>galette-maven-plugin</artifactId>
+                <version>${project.version}</version>
+                <executions>
+                    <execution>
+                        <id>instrument</id>
+                        <goals>
+                            <goal>instrument</goal>
+                        </goals>
+                        <phase>process-resources</phase>
+                        <configuration>
+                            <outputDirectory>${galette.java}</outputDirectory>
+                            <linkedCaches>
+                                <linkedCache>${galette.cache}</linkedCache>
+                            </linkedCaches>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            
+            <!-- Maven Dependency Plugin for Property Resolution -->
+            <plugin>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>properties</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

@@ -275,16 +275,18 @@ public class SymbolicExecutionWrapper {
         System.out.println("Source model: " + source);
         System.out.println("User input thickness: " + thicknessValue + " mm");
 
-        // Create symbolic value for the external input
-        SymbolicValue<Double> symbolicThickness = makeSymbolicDouble(thicknessLabel, thicknessValue);
-        System.out.println("Created symbolic value: " + symbolicThickness);
+        // Create Galette-tagged symbolic value for the external input
+        double taggedThickness = edu.neu.ccs.prl.galette.internal.runtime.Tainter.setTag(
+                thicknessValue, edu.neu.ccs.prl.galette.internal.runtime.Tag.of(thicknessLabel));
+        System.out.println("Created symbolic value: " + thicknessLabel + " = " + taggedThickness + " (symbolic: true)");
 
-        // Use the clean transformation for the core logic
-        BrakeDiscTarget target = BrakeDiscTransformationClean.transform(source, symbolicThickness.getValue());
+        // Use the clean transformation with the Galette-tagged value
+        // The comparison operations will automatically be intercepted by Galette
+        BrakeDiscTarget target = BrakeDiscTransformationClean.transform(source, taggedThickness);
 
         // Add symbolic execution analysis for the conditional logic
         System.out.println("\n=== Symbolic Condition Analysis ===");
-        analyzeConditionalLogic(symbolicThickness, target);
+        analyzeConditionalLogic(new SymbolicValue<>(thicknessLabel, taggedThickness, true), target);
 
         // Display path constraint analysis
         displayPathConstraintAnalysis();

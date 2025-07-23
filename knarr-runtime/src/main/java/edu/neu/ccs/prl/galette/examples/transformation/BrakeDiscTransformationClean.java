@@ -85,7 +85,18 @@ public class BrakeDiscTransformationClean {
      */
     private static void applyEngineeringRules(double thickness, BrakeDiscTarget target) {
         // Rule: If thickness > 10mm, then additional stiffness is present
+        System.out.println("🔍 GALETTE DEBUG: About to perform comparison");
+        System.out.println("   thickness = " + thickness);
+        System.out.println("   STIFFNESS_THRESHOLD = " + STIFFNESS_THRESHOLD);
+
+        // Check if the thickness value has a Galette tag
+        edu.neu.ccs.prl.galette.internal.runtime.Tag thicknessTag =
+                edu.neu.ccs.prl.galette.internal.runtime.Tainter.getTag(thickness);
+        System.out.println("   thickness tag: " + (thicknessTag != null ? thicknessTag : "no tag"));
+
         boolean hasAdditionalStiffness = thickness > STIFFNESS_THRESHOLD;
+        System.out.println("   comparison result: " + hasAdditionalStiffness);
+
         target.setAdditionalStiffness(hasAdditionalStiffness);
     }
 

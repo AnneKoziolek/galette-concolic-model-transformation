@@ -18,6 +18,28 @@ Knarr is a symbolic execution framework that has been **fully migrated** from th
 - **Testing framework** for systematic validation and performance benchmarking
 - **Integration with constraint solvers** (Green/Z3) for automated test generation
 
+## ⚠️ CRITICAL: Galette Instrumentation Required
+
+**Path constraints are only collected when running with Galette instrumentation.** Without the instrumented Java runtime and Galette agent, symbolic values are created but no path constraints are collected during execution.
+
+### Required Setup for Path Constraint Collection:
+
+1. **Instrumented Java Runtime**: Create using Galette Maven plugin or instrument JAR
+2. **Galette Agent**: Run with `-javaagent` and `-Xbootclasspath/a` arguments
+3. **Proper Classpath**: Include all Galette dependencies
+
+**Example of what happens without instrumentation:**
+```
+Path constraints: no constraints  // ❌ No instrumentation
+Initial path constraint: no constraints
+```
+
+**With proper instrumentation:**
+```
+Path constraints: thickness_1 > 10.0  // ✅ Constraints collected
+Initial path constraint: thickness_1 > 10.0
+```
+
 ## Use Cases
 
 ### 1. Model-Driven Engineering Impact Analysis
@@ -39,6 +61,130 @@ if (thickness > 10.0) {  // Creates constraint: thickness > 10
 
 // Path constraints collected: "thickness > 10.0" 
 // Can be used for test generation, coverage analysis, etc.
+```
+
+## Setup and Installation
+
+### Prerequisites
+
+- **JDK 17**: Required to build Galette, can run on Java 8-21 at runtime
+- **Maven 3.6.0+**: For building and dependency management
+- **Linux/WSL2**: Recommended development environment
+
+### Step 1: Build Galette with Instrumentation Support
+
+```bash
+# In galette-concolic-model-transformation/ directory
+mvn -DskipTests install
+
+# This builds:
+# - galette-agent-1.0.0-SNAPSHOT.jar (Java agent)
+# - galette-instrument-1.0.0-SNAPSHOT.jar (JDK instrumentation tool)
+# - galette-maven-plugin (Maven integration)
+```
+
+### Step 2: Create Instrumented Java Installation
+
+#### Option A: Using Maven Plugin (Recommended)
+
+Add to your `pom.xml`:
+```xml
+<build>
+    <plugins>
+        <plugin>
+            <groupId>edu.neu.ccs.prl.galette</groupId>
+            <artifactId>galette-maven-plugin</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+            <executions>
+                <execution>
+                    <id>instrument</id>
+                    <goals>
+                        <goal>instrument</goal>
+                    </goals>
+                    <phase>process-test-resources</phase>
+                    <configuration>
+                        <outputDirectory>${project.build.directory}/galette/java/</outputDirectory>
+                    </configuration>
+                </execution>
+            </executions>
+        </plugin>
+    </plugins>
+</build>
+```
+
+Then run:
+```bash
+mvn process-test-resources
+# Creates instrumented Java in target/galette/java/
+```
+
+#### Option B: Using Galette Instrument JAR
+
+```bash
+# Create instrumented Java manually
+java -jar galette-instrument/target/galette-instrument-1.0.0-SNAPSHOT.jar \
+    $JAVA_HOME \
+    ./target/instrumented-java
+```
+
+### Step 3: Run with Galette Agent
+
+**Correct execution with all required arguments:**
+
+```bash
+#!/bin/bash
+# Example run-with-galette.sh
+
+# Paths (adjust as needed)
+INSTRUMENTED_JAVA="./target/galette/java"
+GALETTE_AGENT="./galette-agent/target/galette-agent-1.0.0-SNAPSHOT.jar"
+
+# Verify instrumented Java exists
+if [ ! -f "$INSTRUMENTED_JAVA/bin/java" ]; then
+    echo "❌ Instrumented Java not found. Run 'mvn process-test-resources' first."
+    exit 1
+fi
+
+# Verify Galette agent exists  
+if [ ! -f "$GALETTE_AGENT" ]; then
+    echo "❌ Galette agent not found. Run 'mvn install' in parent directory first."
+    exit 1
+fi
+
+echo "🚀 Running with Galette instrumentation..."
+echo "   Instrumented Java: $INSTRUMENTED_JAVA/bin/java"
+echo "   Galette Agent: $GALETTE_AGENT"
+
+# Run with proper instrumentation
+$INSTRUMENTED_JAVA/bin/java \
+    -cp "target/classes:$(mvn -q exec:exec -Dexec.executable=echo -Dexec.args='%classpath')" \
+    -Xbootclasspath/a:$GALETTE_AGENT \
+    -javaagent:$GALETTE_AGENT \
+    edu.neu.ccs.prl.galette.examples.ModelTransformationExample
+```
+
+### Step 4: Verify Path Constraint Collection
+
+**Expected output with instrumentation:**
+```
+=== ITERATION 1: Initial Execution ===
+Starting concolic analysis with thickness = 12.0 mm
+Created symbolic value: thickness_1 = 12.0 (symbolic: true)
+Path constraints automatically collected during transformation execution
+Path constraints: thickness_1 > 10.0                    # ✅ Constraints collected!
+Initial path constraint: thickness_1 > 10.0
+Result: additionalStiffness = true
+```
+
+**Output without instrumentation (problematic):**
+```
+=== ITERATION 1: Initial Execution ===
+Starting concolic analysis with thickness = 12.0 mm
+Created symbolic value: thickness_1 = 12.0 (symbolic: true)
+Path constraints automatically collected during transformation execution
+Path constraints: no constraints                         # ❌ No constraints!
+Initial path constraint: no constraints
+Result: additionalStiffness = true
 ```
 
 ### 2. Automated Test Generation

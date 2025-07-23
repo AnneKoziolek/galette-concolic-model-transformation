@@ -158,18 +158,83 @@ mvn clean install
 
 ### Phase 1: Environment Setup and Dependency Integration 🔧
 
-**Objective**: Prepare TestGallete project for enhanced Galette integration
+**Objective**: Prepare TestGallete project for enhanced Galette integration with proper instrumentation
 
-#### 1.1 Build and Install Knarr Runtime JAR
+#### 1.1 Build Galette with Full Instrumentation Support
+
+⚠️ **CRITICAL**: Path constraints are only collected when running with Galette instrumentation. Without the instrumented Java runtime and Galette agent, symbolic values are created but no path constraints are collected during execution.
+
 ```bash
-# In galette-concolic-model-transformation project
-cd knarr-runtime
+# In galette-concolic-model-transformation parent directory
+mvn -DskipTests install
 
-# Build and install to local Maven repository
-mvn clean install
+# This builds all required components:
+# - galette-agent-1.0.0-SNAPSHOT.jar (Java agent for runtime instrumentation)
+# - galette-instrument-1.0.0-SNAPSHOT.jar (JDK instrumentation tool)
+# - galette-maven-plugin (Maven integration for automated instrumentation)
+# - knarr-runtime-1.0.0-SNAPSHOT.jar (Symbolic execution framework)
+```
 
-# This creates and installs:
-# ~/.m2/repository/edu/neu/ccs/prl/galette/knarr-runtime/1.0.0-SNAPSHOT/knarr-runtime-1.0.0-SNAPSHOT.jar
+**What happens without instrumentation:**
+```
+Path constraints: no constraints  ❌
+Initial path constraint: no constraints
+```
+
+**With proper instrumentation:**
+```
+Path constraints: user_choice == 1  ✅
+Initial path constraint: user_choice == 1
+```
+
+#### 1.2 Create Instrumented Java Installation
+
+**Setup instrumented Java using Maven plugin (recommended):**
+
+```bash
+# Add Galette Maven plugin to TestGallete/vsum/pom.xml:
+```
+
+```xml
+<build>
+    <plugins>
+        <plugin>
+            <groupId>edu.neu.ccs.prl.galette</groupId>
+            <artifactId>galette-maven-plugin</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+            <executions>
+                <execution>
+                    <id>instrument</id>
+                    <goals>
+                        <goal>instrument</goal>
+                    </goals>
+                    <phase>process-test-resources</phase>
+                    <configuration>
+                        <outputDirectory>${project.build.directory}/galette/java/</outputDirectory>
+                    </configuration>
+                </execution>
+            </executions>
+        </plugin>
+    </plugins>
+</build>
+```
+
+```bash
+# Then build instrumented Java:
+mvn process-test-resources
+# Creates: TestGallete/vsum/target/galette/java/ (instrumented JDK)
+```
+
+**Alternative: Manual instrumentation using Galette instrument JAR:**
+
+```bash
+# Create instrumented Java manually
+java -jar galette-instrument/target/galette-instrument-1.0.0-SNAPSHOT.jar \
+    $JAVA_HOME \
+    ./target/instrumented-java
+
+# Verify instrumented Java
+ls -la ./target/instrumented-java/bin/java
 ```
 
 #### 1.2 Alternative: Publish to Maven Repository (Recommended for Teams)
@@ -646,32 +711,49 @@ public class VSUMRunner {
 
 echo "🔄 Starting Enhanced Galette with Symbolic Execution Support"
 
-# Build project (Maven will pull knarr-runtime dependency)
+# Build project with instrumentation (Maven will pull knarr-runtime dependency)
 echo "📦 Building project with enhanced Galette..."
 cd ..
-mvn clean compile -q
+mvn clean process-test-resources -q  # Creates instrumented Java
 cd vsum
 
-# Configuration
-INSTRUMENTED_JDK="${JAVA_HOME:-/usr/lib/jvm/java-17-openjdk-amd64}"
-GALETTE_ROOT="${GALETTE_ROOT:-/path/to/galette}"
+# Configuration - CRITICAL: Use instrumented Java and Galette agent
+INSTRUMENTED_JAVA="target/galette/java"
+GALETTE_AGENT="../../galette-concolic-model-transformation/galette-agent/target/galette-agent-1.0.0-SNAPSHOT.jar"
+
+# Verify instrumented Java exists
+if [ ! -f "$INSTRUMENTED_JAVA/bin/java" ]; then
+    echo "❌ Instrumented Java not found at: $INSTRUMENTED_JAVA"
+    echo "   Run 'mvn process-test-resources' to create instrumented Java"
+    exit 1
+fi
+
+# Verify Galette agent exists  
+if [ ! -f "$GALETTE_AGENT" ]; then
+    echo "❌ Galette agent not found at: $GALETTE_AGENT"
+    echo "   Run 'mvn install' in parent galette directory"
+    exit 1
+fi
 
 # Use Maven to build classpath (includes knarr-runtime JAR automatically)
 CLASSPATH=$(mvn -q exec:exec -Dexec.executable=echo -Dexec.args='%classpath')
 
 echo "🚀 Launching Vitruvius with symbolic execution..."
-echo "   Java: ${INSTRUMENTED_JDK}/bin/java"
+echo "   Instrumented Java: $INSTRUMENTED_JAVA/bin/java"
+echo "   Galette Agent: $GALETTE_AGENT"
 echo "   Classpath: Maven-managed (includes knarr-runtime JAR)"
 
-"${INSTRUMENTED_JDK}/bin/java" \
-  -cp "${CLASSPATH}" \
-  -Xbootclasspath/a:"${GALETTE_ROOT}/galette-agent/target/galette-agent-1.0.0-SNAPSHOT.jar" \
-  -javaagent:"${GALETTE_ROOT}/galette-agent/target/galette-agent-1.0.0-SNAPSHOT.jar" \
+# CRITICAL: Use instrumented Java + Galette agent for path constraint collection
+"$INSTRUMENTED_JAVA/bin/java" \
+  -cp "$CLASSPATH" \
+  -Xbootclasspath/a:"$GALETTE_AGENT" \
+  -javaagent:"$GALETTE_AGENT" \
   -Dgalette.coverage=true \
   -Dsymbolic.execution.debug=true \
   tools.vitruv.methodologisttemplate.vsum.VSUMRunner
 
 echo "✅ Symbolic execution complete"
+echo "Expected output: 'Path constraints: user_choice == X' (not 'no constraints')"
 ```
 
 **Update `TestGallete/vsum/run-galette.ps1`:**
@@ -687,8 +769,8 @@ mvn clean compile -q
 Set-Location vsum
 
 # Configuration (UPDATE THESE PATHS)
-$INSTRUMENTED_JDK = $env:JAVA_HOME
-$GALETTE_ROOT = "C:\path\to\galette"  # UPDATE THIS PATH
+$INSTRUMENTED_JDK = "target\galette\java"  # Use instrumented Java created by Maven plugin
+$GALETTE_ROOT = "..\..\galette-concolic-model-transformation"  # Path to Galette project
 
 # Use Maven to build classpath (includes knarr-runtime JAR automatically)
 $CLASSPATH = mvn -q exec:exec -Dexec.executable=echo -Dexec.args='%classpath'
@@ -697,10 +779,29 @@ Write-Host "🚀 Launching Vitruvius with symbolic execution..." -ForegroundColo
 Write-Host "   Java: $INSTRUMENTED_JDK\bin\java.exe" -ForegroundColor Gray
 Write-Host "   Classpath: Maven-managed (includes knarr-runtime JAR)" -ForegroundColor Gray
 
+# Verify instrumented Java exists
+if (!(Test-Path "$INSTRUMENTED_JDK\bin\java.exe")) {
+    Write-Error "❌ Instrumented Java not found at: $INSTRUMENTED_JDK"
+    Write-Host "   Run 'mvn process-test-resources' to create instrumented Java" -ForegroundColor Yellow
+    exit 1
+}
+
+$GALETTE_AGENT = "$GALETTE_ROOT\galette-agent\target\galette-agent-1.0.0-SNAPSHOT.jar"
+
+# Verify Galette agent exists
+if (!(Test-Path $GALETTE_AGENT)) {
+    Write-Error "❌ Galette agent not found at: $GALETTE_AGENT"
+    Write-Host "   Run 'mvn install' in galette-concolic-model-transformation directory" -ForegroundColor Yellow
+    exit 1
+}
+
+Write-Host "   Instrumented Java: $INSTRUMENTED_JDK\bin\java.exe" -ForegroundColor Gray
+Write-Host "   Galette Agent: $GALETTE_AGENT" -ForegroundColor Gray
+
 & "$INSTRUMENTED_JDK\bin\java.exe" `
   -cp "$CLASSPATH" `
-  -Xbootclasspath/a:"$GALETTE_ROOT\galette-agent\target\galette-agent-1.0.0-SNAPSHOT.jar" `
-  -javaagent:"$GALETTE_ROOT\galette-agent\target\galette-agent-1.0.0-SNAPSHOT.jar" `
+  -Xbootclasspath/a:"$GALETTE_AGENT" `
+  -javaagent:"$GALETTE_AGENT" `
   -Dgalette.coverage=true `
   -Dsymbolic.execution.debug=true `
   tools.vitruv.methodologisttemplate.vsum.VSUMRunner

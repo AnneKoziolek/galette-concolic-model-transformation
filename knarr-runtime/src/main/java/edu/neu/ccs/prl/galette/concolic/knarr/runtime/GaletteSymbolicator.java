@@ -170,12 +170,15 @@ public class GaletteSymbolicator {
 
             Tag symbolicTag = Tag.of(label);
 
+            // Use Galette's Tainter to associate the tag with the value
+            double taggedValue = edu.neu.ccs.prl.galette.internal.runtime.Tainter.setTag(concreteValue, symbolicTag);
+
             RealVariable var = new RealVariable(label, null, null);
             tagToExpression.put(symbolicTag, var);
-            valueToTag.put(concreteValue, symbolicTag);
+            valueToTag.put(taggedValue, symbolicTag);
 
             if (DEBUG) {
-                System.out.println("Created symbolic double: " + label + " = " + concreteValue);
+                System.out.println("Created symbolic double with Galette tagging: " + label + " = " + concreteValue);
             }
 
             return symbolicTag;
