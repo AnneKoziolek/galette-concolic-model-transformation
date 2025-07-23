@@ -82,26 +82,14 @@ public class ModelTransformationExample {
                         runCleanTransformation(sourceModel, scanner);
                         break;
                     case 2:
-                        runSymbolicTransformation(sourceModel, scanner);
-                        break;
-                    case 3:
-                        runComparisonDemo(sourceModel, scanner);
-                        break;
-                    case 4:
                         runConcolicPathExploration(sourceModel);
                         break;
-                    case 5:
-                        runLegacySymbolicDemo(sourceModel, scanner);
-                        break;
-                    case 6:
-                        showDetailedExample(sourceModel);
-                        break;
-                    case 7:
+                    case 3:
                         running = false;
                         System.out.println("Goodbye!");
                         break;
                     default:
-                        System.out.println("Invalid option. Please select 1-7.");
+                        System.out.println("Invalid option. Please select 1-3.");
                 }
 
                 if (running) {
@@ -125,12 +113,8 @@ public class ModelTransformationExample {
     private static void showMenu() {
         System.out.println("Available options:");
         System.out.println("1. Clean transformation (business logic only, no symbolic execution)");
-        System.out.println("2. Symbolic transformation (with path constraint collection)");
-        System.out.println("3. Compare clean vs symbolic approaches");
-        System.out.println("4. True concolic execution with automated path exploration");
-        System.out.println("5. Legacy symbolic demo (original implementation)");
-        System.out.println("6. Show detailed example with explanations");
-        System.out.println("7. Exit");
+        System.out.println("2. True concolic execution with automated path exploration");
+        System.out.println("3. Exit");
     }
 
     /**
@@ -166,58 +150,6 @@ public class ModelTransformationExample {
     }
 
     /**
-     * Run symbolic transformation with path constraint collection.
-     */
-    private static void runSymbolicTransformation(BrakeDiscSource source, Scanner scanner) {
-        System.out.println("=== SYMBOLIC TRANSFORMATION (WITH PATH CONSTRAINTS) ===");
-        System.out.println();
-        System.out.println("Source brake disc: " + source);
-        System.out.print("Please enter the brake disc thickness (mm): ");
-
-        double thickness = scanner.nextDouble();
-
-        SymbolicExecutionWrapper.reset();
-        BrakeDiscTarget result = SymbolicExecutionWrapper.transformSymbolic(source, thickness, "user_thickness");
-
-        System.out.println();
-        System.out.println("=== TRANSFORMATION RESULTS ===");
-        System.out.println(result.getGeometricSummary());
-        System.out.println("\nNote: This version collects path constraints for symbolic analysis.");
-    }
-
-    /**
-     * Compare clean vs symbolic transformation approaches.
-     */
-    private static void runComparisonDemo(BrakeDiscSource source, Scanner scanner) {
-        System.out.println("=== COMPARISON: CLEAN VS SYMBOLIC TRANSFORMATION ===");
-        System.out.println();
-
-        System.out.print("Enter thickness value for comparison: ");
-        double thickness = scanner.nextDouble();
-
-        SymbolicExecutionWrapper.compareTransformationMethods(source, thickness);
-    }
-
-    /**
-     * Run legacy symbolic demo (original implementation).
-     */
-    private static void runLegacySymbolicDemo(BrakeDiscSource source, Scanner scanner) {
-        System.out.println("=== LEGACY SYMBOLIC DEMO (ORIGINAL IMPLEMENTATION) ===");
-        System.out.println();
-        System.out.println("Source brake disc: " + source);
-        System.out.print("Please enter the brake disc thickness (mm): ");
-
-        double thickness = scanner.nextDouble();
-
-        SymbolicExecutionWrapper.reset();
-        BrakeDiscTarget result = SymbolicExecutionWrapper.runLegacyStyleDemo(source, thickness);
-
-        System.out.println();
-        System.out.println("=== TRANSFORMATION RESULTS ===");
-        System.out.println(result.getGeometricSummary());
-    }
-
-    /**
      * True concolic execution with automated path exploration.
      * This demonstrates the core Galette/Knarr functionality.
      */
@@ -231,115 +163,6 @@ public class ModelTransformationExample {
         System.out.println();
 
         performConcolicAnalysis(source);
-    }
-
-    /**
-     * Run detailed symbolic analysis showing constraint collection.
-     *
-     * @param source Source model to transform
-     */
-    private static void runSymbolicAnalysisDemo(BrakeDiscSource source) {
-        System.out.println("=== SYMBOLIC ANALYSIS DEMONSTRATION ===");
-        System.out.println();
-        System.out.println("This demo shows detailed symbolic execution tracking");
-        System.out.println("and path constraint collection.");
-        System.out.println();
-
-        // Test with a thickness value that triggers the conditional
-        double testThickness = 12.5;
-        System.out.println("Using test thickness: " + testThickness + " mm");
-        System.out.println("Expected: thickness > 10, so additionalStiffness should be true");
-        System.out.println();
-
-        SymbolicExecutionWrapper.reset();
-        BrakeDiscTarget result = SymbolicExecutionWrapper.runLegacyStyleDemo(source, testThickness);
-
-        System.out.println();
-        System.out.println("=== ANALYSIS RESULTS ===");
-        System.out.println("Transformation result:");
-        System.out.println(result.getGeometricSummary());
-
-        // Show symbolic execution statistics
-        System.out.println();
-        System.out.println("Final symbolic execution state:");
-        System.out.println(SymbolicExecutionWrapper.getExecutionSummary());
-    }
-
-    /**
-     * Show a detailed example with step-by-step explanations.
-     *
-     * @param source Source model to transform
-     */
-    private static void showDetailedExample(BrakeDiscSource source) {
-        System.out.println("=== DETAILED EXAMPLE WITH EXPLANATIONS ===");
-        System.out.println();
-
-        System.out.println("MODEL TRANSFORMATION CONCOLIC EXECUTION WALKTHROUGH");
-        System.out.println(repeatString("━", 55));
-        System.out.println();
-
-        System.out.println("1. PROBLEM CONTEXT:");
-        System.out.println("   In model-driven engineering, transformations often require");
-        System.out.println("   external input from users (e.g., design parameters).");
-        System.out.println("   We want to analyze how these inputs affect the output models.");
-        System.out.println();
-
-        System.out.println("2. SOLUTION APPROACH:");
-        System.out.println("   - Mark external inputs as symbolic values");
-        System.out.println("   - Track their propagation through transformation logic");
-        System.out.println("   - Collect path constraints showing input-output relationships");
-        System.out.println();
-
-        System.out.println("3. CONCRETE EXAMPLE:");
-        System.out.println("   Source: Simple brake disc (diameter, material, cooling vanes)");
-        System.out.println("   Input:  Thickness value (provided by user → made symbolic)");
-        System.out.println("   Logic:  Geometric calculations + conditional stiffness rule");
-        System.out.println("   Output: Enhanced model with computed properties");
-        System.out.println();
-
-        System.out.println("4. KEY CONDITIONAL LOGIC:");
-        System.out.println("   if (thickness > 10mm) {");
-        System.out.println("       additionalStiffness = true;");
-        System.out.println("   } else {");
-        System.out.println("       additionalStiffness = false;");
-        System.out.println("   }");
-        System.out.println();
-
-        System.out.println("5. EXECUTION WITH SAMPLE VALUES:");
-        System.out.println();
-
-        // Demonstrate with two different values
-        double[] testValues = {8.5, 12.0};
-        String[] expectedPaths = {"thickness ≤ 10", "thickness > 10"};
-        boolean[] expectedStiffness = {false, true};
-
-        for (int i = 0; i < testValues.length; i++) {
-            System.out.println("   Test " + (i + 1) + ": thickness = " + testValues[i] + " mm");
-            System.out.println("   Expected path: " + expectedPaths[i]);
-            System.out.println("   Expected additionalStiffness: " + expectedStiffness[i]);
-            System.out.println();
-
-            SymbolicExecutionWrapper.reset();
-            BrakeDiscTarget result = BrakeDiscTransformationClean.transform(source, testValues[i]);
-
-            System.out.println("   Actual result:");
-            System.out.println("   - Additional stiffness: " + result.hasAdditionalStiffness());
-            System.out.println("   - Surface area: " + String.format("%.1f", result.getSurfaceArea()) + " mm²");
-            System.out.println("   - Volume: " + String.format("%.1f", result.getVolume()) + " mm³");
-            System.out.println("   - Weight: " + String.format("%.1f", result.getEstimatedWeight()) + " g");
-            System.out.println();
-        }
-
-        System.out.println("6. BENEFITS FOR MODEL-DRIVEN ENGINEERING:");
-        System.out.println("   ✓ Impact analysis: See how inputs affect outputs");
-        System.out.println("   ✓ Constraint collection: Understand input-output relationships");
-        System.out.println("   ✓ Path exploration: Identify different behavior scenarios");
-        System.out.println("   ✓ Prioritization: Determine which inputs have most impact");
-        System.out.println();
-
-        System.out.println("This demonstrates the core value proposition from the migration goals:");
-        System.out.println("Using Galette to track external inputs through complex model");
-        System.out.println("transformations for impact analysis and consistency management.");
     }
 
     /**
@@ -437,12 +260,9 @@ public class ModelTransformationExample {
     private static class ConcolicResult {
         final BrakeDiscTarget result;
         final String pathConstraint;
-        final boolean hasConstraints;
-
         ConcolicResult(BrakeDiscTarget result, String pathConstraint, boolean hasConstraints) {
             this.result = result;
             this.pathConstraint = pathConstraint;
-            this.hasConstraints = hasConstraints;
         }
     }
 
