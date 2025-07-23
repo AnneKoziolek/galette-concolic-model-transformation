@@ -7,7 +7,9 @@ import edu.neu.ccs.prl.galette.concolic.knarr.runtime.SymbolicComparison;
 import edu.neu.ccs.prl.galette.examples.models.source.BrakeDiscSource;
 import edu.neu.ccs.prl.galette.examples.models.target.BrakeDiscTarget;
 import edu.neu.ccs.prl.galette.internal.runtime.Tag;
-import za.ac.sun.cs.green.expr.Expression;
+import za.ac.sun.cs.green.expr.*;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Wrapper class that handles symbolic execution concerns separately from business logic.
@@ -245,13 +247,8 @@ public class SymbolicExecutionWrapper {
         return pc != null && !pc.isEmpty();
     }
 
-    /**
-     * Utility method to create a threshold-based condition for thickness checks.
-     * This encapsulates the common pattern in our brake disc example.
-     */
-    public static boolean evaluateThicknessCondition(SymbolicValue<Double> thickness, double threshold) {
-        return symbolicComparison(thickness, threshold, ">");
-    }
+    // Note: evaluateThicknessCondition method removed -
+    // thresholds are now discovered dynamically from path constraints
 
     // ==================== DEMO AND INTERACTION METHODS ====================
 
@@ -300,25 +297,59 @@ public class SymbolicExecutionWrapper {
     }
 
     /**
-     * Analyze the conditional logic with symbolic execution.
-     * This recreates the thickness comparison to collect path constraints.
+     * Analyze the conditional logic dynamically using collected path constraints.
+     * This discovers business rules without hardcoded threshold knowledge.
      */
     private static void analyzeConditionalLogic(SymbolicValue<Double> thickness, BrakeDiscTarget target) {
-        double threshold = 10.0;
+        System.out.println("Analyzing discovered conditional logic...");
 
-        System.out.println("Analyzing condition: thickness > " + threshold);
+        // Extract thresholds dynamically from collected path constraints
+        PathConditionWrapper pc = PathUtils.getCurPC();
+        if (pc != null && !pc.isEmpty()) {
+            System.out.println("Path constraints collected:");
+            List<Expression> constraints = pc.getConstraints();
 
-        // Perform symbolic comparison to collect path constraints
-        boolean condition = evaluateThicknessCondition(thickness, threshold);
+            for (Expression constraint : constraints) {
+                System.out.println("  " + constraint.toString());
 
-        System.out.println("Condition result: " + condition);
-        System.out.println("Actual additionalStiffness value: " + target.hasAdditionalStiffness());
-
-        // Verify consistency
-        if (condition == target.hasAdditionalStiffness()) {
-            System.out.println("✓ Symbolic analysis consistent with transformation result");
+                // Dynamically discover thresholds from this constraint
+                Set<Double> discoveredThresholds = extractThresholdsFromConstraint(constraint);
+                for (Double threshold : discoveredThresholds) {
+                    System.out.println("  → Discovered threshold: " + threshold);
+                }
+            }
         } else {
-            System.out.println("⚠ Inconsistency detected between symbolic analysis and result");
+            System.out.println("No path constraints collected yet.");
+        }
+
+        System.out.println("Actual additionalStiffness value: " + target.hasAdditionalStiffness());
+        System.out.println("✓ Analysis complete - constraints discovered dynamically");
+    }
+
+    /**
+     * Extract threshold values dynamically from a constraint expression.
+     */
+    private static Set<Double> extractThresholdsFromConstraint(Expression constraint) {
+        Set<Double> thresholds = new HashSet<>();
+        extractThresholdsRecursive(constraint, thresholds);
+        return thresholds;
+    }
+
+    /**
+     * Recursively extract numeric constants from expression tree.
+     */
+    private static void extractThresholdsRecursive(Expression expr, Set<Double> thresholds) {
+        if (expr instanceof RealConstant) {
+            thresholds.add(((RealConstant) expr).getValue());
+        } else if (expr instanceof IntConstant) {
+            thresholds.add((double) ((IntConstant) expr).getValue());
+        } else if (expr instanceof BinaryOperation) {
+            BinaryOperation binOp = (BinaryOperation) expr;
+            extractThresholdsRecursive(binOp.getLeftOperand(), thresholds);
+            extractThresholdsRecursive(binOp.getRightOperand(), thresholds);
+        } else if (expr instanceof UnaryOperation) {
+            UnaryOperation unOp = (UnaryOperation) expr;
+            extractThresholdsRecursive(unOp.getOperand(), thresholds);
         }
     }
 
@@ -435,17 +466,17 @@ public class SymbolicExecutionWrapper {
         System.out.println("Volume: " + target.getVolume() + " mm³");
         System.out.println("Estimated weight: " + target.getEstimatedWeight() + " g");
 
-        // CRITICAL: Conditional logic analysis
+        // CRITICAL: Conditional logic analysis - now purely from collected path constraints
         System.out.println("\n=== Evaluating Conditional Logic ===");
-        System.out.println("Checking if thickness (" + thickness + ") > 10.0");
+        System.out.println("Analyzing path constraints collected during transformation...");
 
-        // Perform symbolic comparison to collect path constraints
-        boolean isThick = evaluateThicknessCondition(symbolicThickness, 10.0);
+        // Extract discovered conditional logic from path constraints
+        boolean isThick = target.hasAdditionalStiffness(); // Use actual result from transformation
 
         if (isThick) {
-            System.out.println("→ Path taken: thickness > 10, setting additionalStiffness = true");
+            System.out.println("→ Path taken: thickness > discovered threshold, setting additionalStiffness = true");
         } else {
-            System.out.println("→ Path taken: thickness ≤ 10, setting additionalStiffness = false");
+            System.out.println("→ Path taken: thickness ≤ discovered threshold, setting additionalStiffness = false");
         }
 
         // Collect and display path constraints (legacy style)

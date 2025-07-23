@@ -280,28 +280,20 @@ public class GaletteSymbolicator {
 
     /**
      * Extract variable assignments from a constraint expression.
-     * This is a simplified solver for demonstration purposes.
+     * Migrated from original Knarr's dynamic constraint solving approach.
+     * This version generates alternative values dynamically without hardcoded thresholds.
      */
     private static void extractSolutionFromConstraint(Expression constraint, InputSolution solution) {
         try {
-            // For demonstration, create example solutions based on constraint type
-            String constraintStr = constraint.toString();
+            // Generate alternative values using original Knarr's VariableMutator pattern
+            Map<String, Object> alternativeValues = generateAlternativeValues(constraint);
 
-            if (constraintStr.contains("user_thickness")) {
-                if (constraintStr.contains("> 10") || constraintStr.contains("GT")) {
-                    // If constraint requires thickness > 10, suggest a value > 10
-                    solution.setValue("user_thickness", 12.5);
-                } else if (constraintStr.contains("<= 10") || constraintStr.contains("LE")) {
-                    // If constraint requires thickness <= 10, suggest a value <= 10
-                    solution.setValue("user_thickness", 8.0);
-                } else {
-                    // Default case
-                    solution.setValue("user_thickness", 10.0);
-                }
+            for (Map.Entry<String, Object> entry : alternativeValues.entrySet()) {
+                solution.setValue(entry.getKey(), entry.getValue());
             }
 
             // Add constraint information to solution
-            solution.setValue("constraint", constraintStr);
+            solution.setValue("constraint", constraint.toString());
             solution.setValue("satisfiable", "YES");
 
         } catch (Exception e) {
@@ -310,6 +302,184 @@ public class GaletteSymbolicator {
             }
             solution.setValue("satisfiable", "UNKNOWN");
         }
+    }
+
+    /**
+     * Generate alternative values by negating current constraints.
+     * Based on original Knarr's VariableMutator approach (lines 128-131):
+     * 1. Find current variable assignments
+     * 2. Create negation constraints (variable != current_value)
+     * 3. Generate satisfying values for negated constraints
+     */
+    private static Map<String, Object> generateAlternativeValues(Expression constraint) {
+        Map<String, Object> alternatives = new HashMap<>();
+
+        // Extract all variables from the constraint
+        Set<String> variables = extractVariableNames(constraint);
+
+        for (String variable : variables) {
+            // Find the threshold value from the constraint involving this variable
+            Double thresholdValue = extractThresholdForVariable(constraint, variable);
+            if (thresholdValue != null) {
+                // Generate alternative value using original Knarr pattern
+                Double alternativeValue = generateAlternativeValue(constraint, variable, thresholdValue);
+                if (alternativeValue != null) {
+                    alternatives.put(variable, alternativeValue);
+                }
+            }
+        }
+
+        return alternatives;
+    }
+
+    /**
+     * Extract all variable names from a constraint expression.
+     */
+    private static Set<String> extractVariableNames(Expression expr) {
+        Set<String> variables = new HashSet<>();
+        extractVariableNamesRecursive(expr, variables);
+        return variables;
+    }
+
+    /**
+     * Recursively extract variable names from expression tree.
+     */
+    private static void extractVariableNamesRecursive(Expression expr, Set<String> variables) {
+        if (expr instanceof Variable) {
+            variables.add(((Variable) expr).getName());
+        } else if (expr instanceof BinaryOperation) {
+            BinaryOperation binOp = (BinaryOperation) expr;
+            extractVariableNamesRecursive(binOp.getLeftOperand(), variables);
+            extractVariableNamesRecursive(binOp.getRightOperand(), variables);
+        } else if (expr instanceof UnaryOperation) {
+            UnaryOperation unOp = (UnaryOperation) expr;
+            extractVariableNamesRecursive(unOp.getOperand(), variables);
+        }
+    }
+
+    /**
+     * Extract threshold value for a specific variable from constraint.
+     */
+    private static Double extractThresholdForVariable(Expression expr, String targetVariable) {
+        if (expr instanceof BinaryOperation) {
+            BinaryOperation binOp = (BinaryOperation) expr;
+
+            // Check if this is a comparison involving the target variable
+            if (isComparisonOperator(binOp.getOperator())) {
+                String variable = extractVariableName(binOp);
+                if (targetVariable.equals(variable)) {
+                    return extractConstantValue(binOp);
+                }
+            }
+
+            // Recursively search in operands
+            Double leftResult = extractThresholdForVariable(binOp.getLeftOperand(), targetVariable);
+            if (leftResult != null) return leftResult;
+
+            return extractThresholdForVariable(binOp.getRightOperand(), targetVariable);
+        }
+
+        return null;
+    }
+
+    /**
+     * Generate alternative value using original Knarr's negation pattern.
+     * If constraint is "x > threshold", generate value for "x <= threshold" and vice versa.
+     */
+    private static Double generateAlternativeValue(Expression constraint, String variable, Double threshold) {
+        Operation.Operator constraintOp = extractOperatorForVariable(constraint, variable);
+
+        if (constraintOp == null) return null;
+
+        // Generate alternative value by negating the constraint logic
+        switch (constraintOp) {
+            case GT: // Original: x > threshold → Generate: x <= threshold
+                return threshold - 0.1;
+            case GE: // Original: x >= threshold → Generate: x < threshold
+                return threshold - 0.1;
+            case LT: // Original: x < threshold → Generate: x >= threshold
+                return threshold + 0.1;
+            case LE: // Original: x <= threshold → Generate: x > threshold
+                return threshold + 0.1;
+            case EQ: // Original: x == threshold → Generate: x != threshold
+                return threshold + 1.0;
+            case NE: // Original: x != threshold → Generate: x == threshold
+                return threshold;
+            default:
+                return threshold + 1.0; // Default: generate different value
+        }
+    }
+
+    /**
+     * Extract operator for a specific variable from constraint.
+     */
+    private static Operation.Operator extractOperatorForVariable(Expression expr, String targetVariable) {
+        if (expr instanceof BinaryOperation) {
+            BinaryOperation binOp = (BinaryOperation) expr;
+
+            if (isComparisonOperator(binOp.getOperator())) {
+                String variable = extractVariableName(binOp);
+                if (targetVariable.equals(variable)) {
+                    return binOp.getOperator();
+                }
+            }
+
+            // Recursively search in operands
+            Operation.Operator leftResult = extractOperatorForVariable(binOp.getLeftOperand(), targetVariable);
+            if (leftResult != null) return leftResult;
+
+            return extractOperatorForVariable(binOp.getRightOperand(), targetVariable);
+        }
+
+        return null;
+    }
+
+    /**
+     * Check if operator is a comparison operator.
+     */
+    private static boolean isComparisonOperator(Operation.Operator op) {
+        return op == Operation.Operator.GT
+                || op == Operation.Operator.GE
+                || op == Operation.Operator.LT
+                || op == Operation.Operator.LE
+                || op == Operation.Operator.EQ
+                || op == Operation.Operator.NE;
+    }
+
+    /**
+     * Extract variable name from binary operation (assumes one operand is variable, other is constant).
+     */
+    private static String extractVariableName(BinaryOperation binOp) {
+        Expression left = binOp.getLeftOperand();
+        Expression right = binOp.getRightOperand();
+
+        if (left instanceof Variable) {
+            return ((Variable) left).getName();
+        } else if (right instanceof Variable) {
+            return ((Variable) right).getName();
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract constant value from binary operation.
+     */
+    private static Double extractConstantValue(BinaryOperation binOp) {
+        Expression left = binOp.getLeftOperand();
+        Expression right = binOp.getRightOperand();
+
+        if (left instanceof RealConstant) {
+            return ((RealConstant) left).getValue();
+        } else if (right instanceof RealConstant) {
+            return ((RealConstant) right).getValue();
+        } else if (left instanceof IntConstant) {
+            return (double) ((IntConstant) left).getValue();
+        } else if (right instanceof IntConstant) {
+            return (double) ((IntConstant) right).getValue();
+        }
+
+        return null;
     }
 
     /**
