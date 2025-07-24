@@ -53,7 +53,7 @@ public class GaletteTransformer {
         ClassReader cr = new ClassReader(classFileBuffer);
         String className = cr.getClassName();
 
-        // Debug output only for application classes
+        // Debug output for application classes
         if (className.startsWith("edu/neu/ccs/prl/galette/examples/")) {
             System.out.println("🔧 GaletteTransformer.transform() called for class: " + className);
         }
