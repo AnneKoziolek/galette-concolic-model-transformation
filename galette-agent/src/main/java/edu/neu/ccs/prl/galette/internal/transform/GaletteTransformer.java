@@ -45,7 +45,11 @@ public class GaletteTransformer {
      * <p>
      * Non-null.
      */
-    private static final ExclusionList exclusions = new ExclusionList("java/lang/Object", INTERNAL_PACKAGE_PREFIX);
+    private static final ExclusionList exclusions = new ExclusionList(
+            "java/lang/Object",
+            INTERNAL_PACKAGE_PREFIX,
+            "edu/neu/ccs/prl/galette/internal/runtime/PathUtils" // Prevent instrumentation loops
+            );
 
     private static TransformationCache cache;
 
@@ -118,6 +122,13 @@ public class GaletteTransformer {
         ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
         // Remove computed frames
         ClassVisitor cv = hasFrames ? cw : new FrameRemover(cw);
+
+        // Add comparison interceptor BEFORE other transformations
+        if (Boolean.getBoolean("galette.concolic.interception.enabled")
+                && !cn.name.equals("edu/neu/ccs/prl/galette/internal/runtime/PathUtils")) {
+            cv = new ComparisonInterceptorVisitor(cv);
+        }
+
         // Make the members of certain classes publicly accessible
         if (AccessModifier.isApplicable(cn.name)) {
             cv = new AccessModifier(cv);

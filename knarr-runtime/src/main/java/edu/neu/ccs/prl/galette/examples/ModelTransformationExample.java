@@ -289,7 +289,7 @@ public class ModelTransformationExample {
         System.out.println("✅ Path constraints collected via SymbolicComparison.greaterThan() integration");
 
         // Collect path constraints
-        PathConditionWrapper pc = PathUtils.getCurPC();
+        PathConditionWrapper pc = PathUtils.getCurPCWithGalette();
         String constraintDescription = "no constraints";
         boolean hasConstraints = false;
 
@@ -346,7 +346,7 @@ public class ModelTransformationExample {
 
         // Fallback: Generate alternative inputs based on analysis of explored inputs
         // Use dynamic threshold discovery from path constraints
-        PathConditionWrapper pc = PathUtils.getCurPC();
+        PathConditionWrapper pc = PathUtils.getCurPCWithGalette();
         Set<Double> discoveredThresholds = new HashSet<>();
         if (pc != null && !pc.isEmpty()) {
             List<Expression> constraints = pc.getConstraints();
@@ -395,7 +395,7 @@ public class ModelTransformationExample {
      */
     private static Double exploreBoundaryConditions(List<Double> exploredInputs) {
         // Discover thresholds dynamically from path constraints
-        PathConditionWrapper pc = PathUtils.getCurPC();
+        PathConditionWrapper pc = PathUtils.getCurPCWithGalette();
         Set<Double> discoveredThresholds = new HashSet<>();
         if (pc != null && !pc.isEmpty()) {
             List<Expression> constraints = pc.getConstraints();

@@ -3,6 +3,7 @@ package edu.neu.ccs.prl.galette.concolic.knarr.runtime;
 import edu.neu.ccs.prl.galette.concolic.knarr.green.GaletteGreenBridge;
 import edu.neu.ccs.prl.galette.internal.runtime.Tag;
 import java.util.HashSet;
+import java.util.List;
 import za.ac.sun.cs.green.expr.*;
 import za.ac.sun.cs.green.expr.Operation.Operator;
 
@@ -247,6 +248,54 @@ public class PathUtils {
             this.value = value;
             this.tag = tag;
         }
+    }
+
+    /**
+     * Get the current path condition with Galette automatic interception constraints.
+     * This method combines constraints from manual symbolic execution and automatic comparison interception.
+     *
+     * @return Path condition wrapper containing both manual and automatic constraints
+     */
+    public static PathConditionWrapper getCurPCWithGalette() {
+        PathConditionWrapper existing = getCurPC();
+
+        if (GalettePathConstraintBridge.isAvailable()) {
+            List<Expression> galetteConstraints = GalettePathConstraintBridge.getGaletteConstraints();
+
+            if (!galetteConstraints.isEmpty()) {
+                return mergePathConditions(existing, galetteConstraints);
+            }
+        }
+
+        return existing;
+    }
+
+    /**
+     * Merge existing path conditions with constraints from Galette automatic interception.
+     *
+     * @param existing The existing path condition wrapper
+     * @param galetteConstraints Constraints from Galette automatic interception
+     * @return Merged path condition wrapper
+     */
+    private static PathConditionWrapper mergePathConditions(
+            PathConditionWrapper existing, List<Expression> galetteConstraints) {
+        PathConditionWrapper merged = new PathConditionWrapper();
+
+        // Add existing constraints
+        if (existing != null) {
+            for (Expression expr : existing.getConstraints()) {
+                merged.addConstraint(expr);
+            }
+        }
+
+        // Add Galette constraints
+        for (Expression constraint : galetteConstraints) {
+            if (constraint != null) {
+                merged.addConstraint(constraint);
+            }
+        }
+
+        return merged;
     }
 
     /**
