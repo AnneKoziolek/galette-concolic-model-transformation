@@ -66,7 +66,13 @@ if needs_build; then
     echo "🧹 Cleaning Maven target directory..."
     mvn clean -q
     
-    # First compile the Java classes
+    # First build the galette-agent if needed
+    if [ ! -f "../galette-agent/target/galette-agent-1.0.0-SNAPSHOT.jar" ]; then
+        echo "🔨 Building galette-agent (required for instrumentation)..."
+        (cd ../galette-agent && mvn clean package -q -DskipTests)
+    fi
+    
+    # Then compile the Java classes
     echo "🔨 Compiling Java classes..."
     mvn compile -q
     
@@ -126,8 +132,9 @@ else
     echo "⚡ Using cached classpath (cp.txt)"
 fi
 
-# Create classpath with compiled classes and all dependencies
-CP="target/classes:target/test-classes:$(cat cp.txt)"
+# Create classpath with compiled classes, all dependencies, AND Galette agent
+# Note: Adding GALETTE_AGENT to regular classpath to make PathUtils accessible
+CP="target/classes:target/test-classes:$GALETTE_AGENT:$(cat cp.txt)"
 
 echo "📚 Using classpath with $(echo $CP | tr ':' '\n' | wc -l) entries"
 echo ""
@@ -154,6 +161,8 @@ mkdir -p target/galette/cache
   -Dgalette.coverage=true \
   -Dsymbolic.execution.debug=true \
   -Dgalette.debug=true \
+  -Dgalette.concolic.interception.enabled=true \
+  -Dgalette.concolic.interception.debug=true \
   -verbose:javaagent \
   edu.neu.ccs.prl.galette.examples.ModelTransformationExample "$@"
 

@@ -17,6 +17,7 @@ public class ComparisonInterceptorVisitor extends ClassVisitor {
 
     public ComparisonInterceptorVisitor(ClassVisitor cv) {
         super(GaletteTransformer.ASM_VERSION, cv);
+        System.out.println("🔧 ComparisonInterceptorVisitor created");
     }
 
     @Override
@@ -36,23 +37,28 @@ public class ComparisonInterceptorVisitor extends ClassVisitor {
         public void visitInsn(int opcode) {
             switch (opcode) {
                 case Opcodes.LCMP:
+                    System.out.println("🔧 Intercepting LCMP instruction");
                     // Replace LCMP entirely with instrumented version
                     mv.visitMethodInsn(Opcodes.INVOKESTATIC, PATH_UTILS_CLASS, "instrumentedLcmp", "(JJ)I", false);
                     break;
 
                 case Opcodes.FCMPL:
+                    System.out.println("🔧 Intercepting FCMPL instruction");
                     mv.visitMethodInsn(Opcodes.INVOKESTATIC, PATH_UTILS_CLASS, "instrumentedFcmpl", "(FF)I", false);
                     break;
 
                 case Opcodes.FCMPG:
+                    System.out.println("🔧 Intercepting FCMPG instruction");
                     mv.visitMethodInsn(Opcodes.INVOKESTATIC, PATH_UTILS_CLASS, "instrumentedFcmpg", "(FF)I", false);
                     break;
 
                 case Opcodes.DCMPL:
+                    System.out.println("🔧 Intercepting DCMPL instruction");
                     mv.visitMethodInsn(Opcodes.INVOKESTATIC, PATH_UTILS_CLASS, "instrumentedDcmpl", "(DD)I", false);
                     break;
 
                 case Opcodes.DCMPG:
+                    System.out.println("🔧 Intercepting DCMPG instruction");
                     mv.visitMethodInsn(Opcodes.INVOKESTATIC, PATH_UTILS_CLASS, "instrumentedDcmpg", "(DD)I", false);
                     break;
 

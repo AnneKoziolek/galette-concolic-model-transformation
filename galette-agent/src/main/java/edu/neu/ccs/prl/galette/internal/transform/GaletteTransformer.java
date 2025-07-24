@@ -47,8 +47,7 @@ public class GaletteTransformer {
      */
     private static final ExclusionList exclusions = new ExclusionList(
             "java/lang/Object",
-            INTERNAL_PACKAGE_PREFIX,
-            "edu/neu/ccs/prl/galette/internal/runtime/PathUtils" // Prevent instrumentation loops
+            INTERNAL_PACKAGE_PREFIX
             );
 
     private static TransformationCache cache;
@@ -124,8 +123,11 @@ public class GaletteTransformer {
         ClassVisitor cv = hasFrames ? cw : new FrameRemover(cw);
 
         // Add comparison interceptor BEFORE other transformations
-        if (Boolean.getBoolean("galette.concolic.interception.enabled")
-                && !cn.name.equals("edu/neu/ccs/prl/galette/internal/runtime/PathUtils")) {
+        boolean interceptorEnabled = Boolean.getBoolean("galette.concolic.interception.enabled");
+        System.out.println(
+                "🔧 GaletteTransformer: interceptorEnabled = " + interceptorEnabled + " for class " + cn.name);
+        if (interceptorEnabled && !cn.name.equals("edu/neu/ccs/prl/galette/internal/runtime/PathUtils")) {
+            System.out.println("🔧 Adding ComparisonInterceptorVisitor for class: " + cn.name);
             cv = new ComparisonInterceptorVisitor(cv);
         }
 

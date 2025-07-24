@@ -23,11 +23,22 @@ public class GalettePathConstraintBridge {
 
     static {
         try {
-            galettePathUtilsClass = Class.forName("edu.neu.ccs.prl.galette.internal.runtime.PathUtils");
-            getCurrentMethod = galettePathUtilsClass.getMethod("getCurrent");
-            flushMethod = galettePathUtilsClass.getMethod("flush");
+            System.out.println("🔧 GalettePathConstraintBridge: Attempting to load Galette PathConstraintAPI...");
+            galettePathUtilsClass = Class.forName("edu.neu.ccs.prl.galette.PathConstraintAPI");
+            System.out.println("✅ Successfully loaded PathConstraintAPI: " + galettePathUtilsClass.getName());
+
+            getCurrentMethod = galettePathUtilsClass.getMethod("getCurrentConstraints");
+            System.out.println("✅ Found getCurrentConstraints method: " + getCurrentMethod);
+
+            flushMethod = galettePathUtilsClass.getMethod("flushConstraints");
+            System.out.println("✅ Found flushConstraints method: " + flushMethod);
+
+            System.out.println("🎉 GalettePathConstraintBridge initialization complete!");
         } catch (Exception e) {
-            // Galette PathUtils not available - automatic interception disabled
+            System.out.println("❌ GalettePathConstraintBridge initialization failed: "
+                    + e.getClass().getSimpleName() + ": " + e.getMessage());
+            System.out.println("   This means automatic comparison interception is disabled");
+            // Galette PathConstraintAPI not available - automatic interception disabled
             galettePathUtilsClass = null;
         }
     }
@@ -43,13 +54,17 @@ public class GalettePathConstraintBridge {
      * Retrieve path constraints from Galette's automatic interception.
      */
     public static List<Expression> getGaletteConstraints() {
+        System.out.println(
+                "🔧 GalettePathConstraintBridge.getGaletteConstraints() called, isAvailable=" + isAvailable());
         if (!isAvailable()) return new ArrayList<>();
 
         try {
             @SuppressWarnings("unchecked")
             List<Object> rawConstraints = (List<Object>) getCurrentMethod.invoke(null);
+            System.out.println("🔧 Retrieved " + rawConstraints.size() + " raw constraints from Galette PathUtils");
             return convertToGreenExpressions(rawConstraints);
         } catch (Exception e) {
+            System.out.println("⚠️ Exception in getGaletteConstraints: " + e.getMessage());
             return new ArrayList<>();
         }
     }

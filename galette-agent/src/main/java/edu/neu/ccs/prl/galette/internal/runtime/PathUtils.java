@@ -18,6 +18,17 @@ public final class PathUtils {
 
     private static final boolean ENABLED = Boolean.getBoolean("galette.concolic.interception.enabled");
 
+    static {
+        try {
+            System.out.println("🔧 PathUtils static initializer: ENABLED = " + ENABLED);
+            System.out.println("🔧 System property galette.concolic.interception.enabled = "
+                    + System.getProperty("galette.concolic.interception.enabled"));
+        } catch (Throwable t) {
+            System.err.println("❌ PathUtils static initializer failed: " + t);
+            t.printStackTrace();
+        }
+    }
+
     private static final boolean DEBUG = Boolean.getBoolean("galette.concolic.interception.debug");
 
     private static final boolean PERFORMANCE_MODE = Boolean.getBoolean("galette.concolic.interception.performance");
@@ -128,6 +139,7 @@ public final class PathUtils {
      * Instrumented version of DCMPL instruction.
      */
     public static int instrumentedDcmpl(double value1, double value2) {
+        System.out.println("🔍 PathUtils.instrumentedDcmpl called: " + value1 + " vs " + value2);
         int result;
         if (Double.isNaN(value1) || Double.isNaN(value2)) {
             result = -1; // DCMPL returns -1 for NaN
@@ -137,10 +149,14 @@ public final class PathUtils {
 
         if (ENABLED && mightBeSymbolic(value1, value2)) {
             PATH_CONDITIONS.get().add(new Constraint(value1, value2, "DCMPL", result));
+            System.out.println("✅ DCMPL constraint added: " + value1 + " DCMPL " + value2 + " -> " + result);
 
             if (DEBUG) {
                 System.out.println("PathUtils: " + value1 + " DCMPL " + value2 + " -> " + result);
             }
+        } else {
+            System.out.println("⚠️ DCMPL not enabled or not symbolic: ENABLED=" + ENABLED + ", mightBeSymbolic="
+                    + mightBeSymbolic(value1, value2));
         }
 
         return result;
@@ -150,6 +166,7 @@ public final class PathUtils {
      * Instrumented version of DCMPG instruction.
      */
     public static int instrumentedDcmpg(double value1, double value2) {
+        System.out.println("🔍 PathUtils.instrumentedDcmpg called: " + value1 + " vs " + value2);
         int result;
         if (Double.isNaN(value1) || Double.isNaN(value2)) {
             result = 1; // DCMPG returns 1 for NaN
@@ -159,10 +176,14 @@ public final class PathUtils {
 
         if (ENABLED && mightBeSymbolic(value1, value2)) {
             PATH_CONDITIONS.get().add(new Constraint(value1, value2, "DCMPG", result));
+            System.out.println("✅ DCMPG constraint added: " + value1 + " DCMPG " + value2 + " -> " + result);
 
             if (DEBUG) {
                 System.out.println("PathUtils: " + value1 + " DCMPG " + value2 + " -> " + result);
             }
+        } else {
+            System.out.println("⚠️ DCMPG not enabled or not symbolic: ENABLED=" + ENABLED + ", mightBeSymbolic="
+                    + mightBeSymbolic(value1, value2));
         }
 
         return result;

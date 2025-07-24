@@ -283,10 +283,9 @@ public class ModelTransformationExample {
                 + (verifyTag != null ? verifyTag : "no tag") + ")");
 
         // Execute the transformation with the TAGGED value (this is the key fix!)
+        System.out.println("🔧 About to call BrakeDiscTransformation.transform() with tagged thickness");
         BrakeDiscTarget result = BrakeDiscTransformation.transform(source, taggedThickness);
-
-        // Path constraints are automatically collected during the transformation via SymbolicComparison
-        System.out.println("✅ Path constraints collected via SymbolicComparison.greaterThan() integration");
+        System.out.println("🔧 BrakeDiscTransformation.transform() completed");
 
         // Collect path constraints
         PathConditionWrapper pc = PathUtils.getCurPCWithGalette();

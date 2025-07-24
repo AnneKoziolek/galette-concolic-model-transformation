@@ -257,14 +257,21 @@ public class PathUtils {
      * @return Path condition wrapper containing both manual and automatic constraints
      */
     public static PathConditionWrapper getCurPCWithGalette() {
+        System.out.println("🔧 PathUtils.getCurPCWithGalette() called");
         PathConditionWrapper existing = getCurPC();
+        System.out.println("🔧 Existing constraints: " + (existing != null ? existing.size() : "null"));
 
         if (GalettePathConstraintBridge.isAvailable()) {
             List<Expression> galetteConstraints = GalettePathConstraintBridge.getGaletteConstraints();
+            System.out.println("🔧 Galette constraints retrieved: " + galetteConstraints.size());
 
             if (!galetteConstraints.isEmpty()) {
-                return mergePathConditions(existing, galetteConstraints);
+                PathConditionWrapper merged = mergePathConditions(existing, galetteConstraints);
+                System.out.println("🔧 Merged constraints: " + merged.size());
+                return merged;
             }
+        } else {
+            System.out.println("🔧 GalettePathConstraintBridge not available");
         }
 
         return existing;
