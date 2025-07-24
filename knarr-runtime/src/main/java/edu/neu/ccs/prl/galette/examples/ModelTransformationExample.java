@@ -69,40 +69,41 @@ public class ModelTransformationExample {
         Scanner scanner = new Scanner(System.in);
         boolean running = true;
 
-        while (running) {
-            System.out.print("\nSelect an option (1-3): ");
+        // just one iteration for now
+        // while (running) {
+        System.out.print("\nSelect an option (1-3): ");
 
-            try {
-                int choice = scanner.nextInt();
-                scanner.nextLine(); // Consume the newline character
-                System.out.println();
+        try {
+            int choice = scanner.nextInt();
+            scanner.nextLine(); // Consume the newline character
+            System.out.println();
 
-                switch (choice) {
-                    case 1:
-                        runCleanTransformation(sourceModel, scanner);
-                        break;
-                    case 2:
-                        runConcolicPathExploration(sourceModel);
-                        break;
-                    case 3:
-                        running = false;
-                        System.out.println("Goodbye!");
-                        break;
-                    default:
-                        System.out.println("Invalid option. Please select 1-3.");
-                }
+            switch (choice) {
+                case 1:
+                    runCleanTransformation(sourceModel, scanner);
+                    break;
+                case 2:
+                    runConcolicPathExploration(sourceModel);
+                    break;
+                case 3:
+                    running = false;
+                    System.out.println("Goodbye!");
+                    break;
+                default:
+                    System.out.println("Invalid option. Please select 1-3.");
+            }
 
-                if (running) {
-                    System.out.println("\n" + repeatString("-", 60));
-                    showMenu();
-                }
-
-            } catch (Exception e) {
-                System.err.println("Error: " + e.getMessage());
-                scanner.nextLine(); // Clear invalid input
+            if (running) {
+                System.out.println("\n" + repeatString("-", 60));
                 showMenu();
             }
+
+        } catch (Exception e) {
+            System.err.println("Error: " + e.getMessage());
+            scanner.nextLine(); // Clear invalid input
+            showMenu();
         }
+        // }
 
         scanner.close();
     }
@@ -281,6 +282,11 @@ public class ModelTransformationExample {
         Tag verifyTag = edu.neu.ccs.prl.galette.internal.runtime.Tainter.getTag(taggedThickness);
         System.out.println("Created symbolic value: " + label + " = " + thickness + " (tag: "
                 + (verifyTag != null ? verifyTag : "no tag") + ")");
+
+        // TEMPORARY: Direct comparison test to verify agent is working
+        System.out.println("🔧 Testing direct comparison in ModelTransformationExample...");
+        boolean testComparison = taggedThickness > 10.0;
+        System.out.println("🔧 Direct comparison result: " + taggedThickness + " > 10.0 = " + testComparison);
 
         // Execute the transformation with the TAGGED value (this is the key fix!)
         System.out.println("🔧 About to call BrakeDiscTransformation.transform() with tagged thickness");

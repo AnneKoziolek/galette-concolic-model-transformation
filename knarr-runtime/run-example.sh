@@ -132,9 +132,9 @@ else
     echo "⚡ Using cached classpath (cp.txt)"
 fi
 
-# Create classpath with compiled classes, all dependencies, AND Galette agent
-# Note: Adding GALETTE_AGENT to regular classpath to make PathUtils accessible
-CP="target/classes:target/test-classes:$GALETTE_AGENT:$(cat cp.txt)"
+# Create classpath with compiled classes and dependencies
+# Note: Galette agent classes should be accessible via -Xbootclasspath/a, not regular classpath
+CP="target/classes:target/test-classes:$(cat cp.txt)"
 
 echo "📚 Using classpath with $(echo $CP | tr ':' '\n' | wc -l) entries"
 echo ""
@@ -164,6 +164,7 @@ mkdir -p target/galette/cache
   -Dgalette.concolic.interception.enabled=true \
   -Dgalette.concolic.interception.debug=true \
   -verbose:javaagent \
+  -verbose:class \
   edu.neu.ccs.prl.galette.examples.ModelTransformationExample "$@"
 
 echo ""

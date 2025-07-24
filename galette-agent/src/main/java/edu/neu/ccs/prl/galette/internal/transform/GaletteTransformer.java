@@ -45,19 +45,21 @@ public class GaletteTransformer {
      * <p>
      * Non-null.
      */
-    private static final ExclusionList exclusions = new ExclusionList(
-            "java/lang/Object",
-            INTERNAL_PACKAGE_PREFIX
-            );
+    private static final ExclusionList exclusions = new ExclusionList("java/lang/Object", INTERNAL_PACKAGE_PREFIX);
 
     private static TransformationCache cache;
 
     public byte[] transform(byte[] classFileBuffer, boolean isHostedAnonymous) {
         ClassReader cr = new ClassReader(classFileBuffer);
         String className = cr.getClassName();
+        
+        // TEMPORARY: Debug all class transformations
+        System.out.println("🔧 GaletteTransformer.transform() called for class: " + className);
+        
         TransformationCache currentCache = getCache();
         if (exclusions.isExcluded(className) || AsmUtil.isSet(cr.getAccess(), Opcodes.ACC_MODULE)) {
             // Skip excluded classes and module info
+            System.out.println("⚠️ Skipping excluded class: " + className);
             return null;
         }
         try {
@@ -126,8 +128,10 @@ public class GaletteTransformer {
         boolean interceptorEnabled = Boolean.getBoolean("galette.concolic.interception.enabled");
         System.out.println(
                 "🔧 GaletteTransformer: interceptorEnabled = " + interceptorEnabled + " for class " + cn.name);
-        if (interceptorEnabled && !cn.name.equals("edu/neu/ccs/prl/galette/internal/runtime/PathUtils")) {
-            System.out.println("🔧 Adding ComparisonInterceptorVisitor for class: " + cn.name);
+
+        // TEMPORARY: Force enable for debugging
+        if (!cn.name.equals("edu/neu/ccs/prl/galette/internal/runtime/PathUtils")) {
+            System.out.println("🔧 FORCE Adding ComparisonInterceptorVisitor for class: " + cn.name);
             cv = new ComparisonInterceptorVisitor(cv);
         }
 
