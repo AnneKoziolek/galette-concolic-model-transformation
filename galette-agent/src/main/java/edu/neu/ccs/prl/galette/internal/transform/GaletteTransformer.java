@@ -56,6 +56,11 @@ public class GaletteTransformer {
         // Debug output for application classes
         if (className.startsWith("edu/neu/ccs/prl/galette/examples/")) {
             System.out.println("🔧 GaletteTransformer.transform() called for class: " + className);
+
+            // Debug: Check comparison interceptor enablement at this level
+            boolean interceptorEnabled = Boolean.getBoolean("galette.concolic.interception.enabled");
+            System.out.println(
+                    "🔧 GaletteTransformer: interceptorEnabled = " + interceptorEnabled + " for class " + className);
         }
 
         TransformationCache currentCache = getCache();
@@ -98,6 +103,9 @@ public class GaletteTransformer {
     private byte[] transform(ClassReader cr, boolean propagate, boolean isHostedAnonymous) {
         ClassNode cn = new ClassNode(ASM_VERSION);
         cr.accept(cn, ClassReader.EXPAND_FRAMES);
+
+        // Debug: Log ALL classes that reach this point
+        System.out.println("🔧 Private transform() called for class: " + cn.name);
         if (hasShadowInstrumentation(cn)) {
             // This class has already been instrumented; return null to indicate that the class was unchanged
             return null;
@@ -129,11 +137,21 @@ public class GaletteTransformer {
         // Add comparison interceptor BEFORE other transformations
         boolean interceptorEnabled = Boolean.getBoolean("galette.concolic.interception.enabled");
 
-        // Only add interceptor for application classes and if enabled
-        if (interceptorEnabled && !cn.name.startsWith("edu/neu/ccs/prl/galette/internal/")) {
-            if (cn.name.startsWith("edu/neu/ccs/prl/galette/examples/")) {
-                System.out.println("🔧 Adding ComparisonInterceptorVisitor for class: " + cn.name);
-            }
+        // Debug: Print all classes being transformed when interceptor is enabled
+        if (interceptorEnabled) {
+            System.out.println(
+                    "🔍 Transforming class: " + cn.name + " (interceptor enabled: " + interceptorEnabled + ")");
+        }
+
+        // Debug: Show system property check for all classes
+        if (cn.name.contains("BrakeDisc") || cn.name.contains("ModelTransformation")) {
+            System.out.println("🔧 Class " + cn.name + ": interceptorEnabled=" + interceptorEnabled + " (sys prop="
+                    + System.getProperty("galette.concolic.interception.enabled") + ")");
+        }
+
+        // Only add interceptor for application classes and if enabled (like the old working version)
+        if (interceptorEnabled && !cn.name.equals("edu/neu/ccs/prl/galette/internal/runtime/PathUtils")) {
+            System.out.println("🔧 FORCE Adding ComparisonInterceptorVisitor for class: " + cn.name);
             cv = new ComparisonInterceptorVisitor(cv);
         }
 
