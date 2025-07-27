@@ -1,4 +1,4 @@
-package edu.neu.ccs.prl.galette.examples.models.source;
+package edu.neu.ccs.prl.galette.examples.models.sourcemodel;
 
 /**
  * Source model representing a simple brake disc with basic properties.
