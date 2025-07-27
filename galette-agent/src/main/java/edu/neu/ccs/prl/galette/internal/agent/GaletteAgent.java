@@ -59,7 +59,8 @@ public final class GaletteAgent {
             // Debug transformation for specific classes only to avoid ClassCircularityError
             if (className != null
                     && className.equals("edu/neu/ccs/prl/galette/examples/transformation/BrakeDiscTransformation")) {
-                System.out.println("🔍 TransformerWrapper.transform() called for: " + className);
+                System.out.println("🔍 TransformerWrapper.transform() called for: " + className
+                        + ". classBeingRedefined: " + classBeingRedefined);
             }
 
             if (classBeingRedefined != null) {
