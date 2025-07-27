@@ -2,9 +2,8 @@ package edu.neu.ccs.prl.galette.examples.transformation;
 
 import edu.neu.ccs.prl.galette.examples.models.source.BrakeDiscSource;
 import edu.neu.ccs.prl.galette.examples.target.BrakeDiscTarget;
-import za.ac.sun.cs.green.expr.Operation.Operator;
-
 import java.util.Scanner;
+import za.ac.sun.cs.green.expr.Operation.Operator;
 
 /**
  * Model transformation logic for brake disc models with symbolic execution support.
@@ -85,9 +84,8 @@ public class BrakeDiscTransformation {
      */
     private static void applyEngineeringRules(double thickness, BrakeDiscTarget target) {
         // Rule: If thickness > STIFFNESS_THRESHOLD, then additional stiffness is present
-        boolean hasAdditionalStiffness = SymbolicExecutionWrapper.compare(thickness, STIFFNESS_THRESHOLD,
-            Operator.GT);
-        //boolean hasAdditionalStiffness = thickness > STIFFNESS_THRESHOLD;
+        boolean hasAdditionalStiffness = SymbolicExecutionWrapper.compare(thickness, STIFFNESS_THRESHOLD, Operator.GT);
+        // boolean hasAdditionalStiffness = thickness > STIFFNESS_THRESHOLD;
 
         target.setAdditionalStiffness(hasAdditionalStiffness);
     }
