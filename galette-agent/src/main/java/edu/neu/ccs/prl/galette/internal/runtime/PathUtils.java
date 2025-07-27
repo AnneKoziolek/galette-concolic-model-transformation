@@ -16,11 +16,14 @@ public final class PathUtils {
 
     // ===== CONFIGURATION =====
 
-    private static final boolean ENABLED = Boolean.getBoolean("galette.concolic.interception.enabled");
+    // Check system property dynamically instead of static final
+    private static boolean isEnabled() {
+        return Boolean.getBoolean("galette.concolic.interception.enabled");
+    }
 
     static {
         try {
-            System.out.println("🔧 PathUtils static initializer: ENABLED = " + ENABLED);
+            System.out.println("🔧 PathUtils static initializer: isEnabled() = " + isEnabled());
             System.out.println("🔧 System property galette.concolic.interception.enabled = "
                     + System.getProperty("galette.concolic.interception.enabled"));
         } catch (Throwable t) {
@@ -80,7 +83,7 @@ public final class PathUtils {
     public static int instrumentedLcmp(long value1, long value2) {
         int result = Long.compare(value1, value2);
 
-        if (ENABLED && mightBeSymbolic(value1, value2)) {
+        if (isEnabled() && mightBeSymbolic(value1, value2)) {
             PATH_CONDITIONS.get().add(new Constraint(value1, value2, "LCMP", result));
 
             if (DEBUG) {
@@ -102,7 +105,7 @@ public final class PathUtils {
             result = Float.compare(value1, value2);
         }
 
-        if (ENABLED && mightBeSymbolic(value1, value2)) {
+        if (isEnabled() && mightBeSymbolic(value1, value2)) {
             PATH_CONDITIONS.get().add(new Constraint(value1, value2, "FCMPL", result));
 
             if (DEBUG) {
@@ -124,7 +127,7 @@ public final class PathUtils {
             result = Float.compare(value1, value2);
         }
 
-        if (ENABLED && mightBeSymbolic(value1, value2)) {
+        if (isEnabled() && mightBeSymbolic(value1, value2)) {
             PATH_CONDITIONS.get().add(new Constraint(value1, value2, "FCMPG", result));
 
             if (DEBUG) {
@@ -147,7 +150,7 @@ public final class PathUtils {
             result = Double.compare(value1, value2);
         }
 
-        if (ENABLED && mightBeSymbolic(value1, value2)) {
+        if (isEnabled() && mightBeSymbolic(value1, value2)) {
             PATH_CONDITIONS.get().add(new Constraint(value1, value2, "DCMPL", result));
             System.out.println("✅ DCMPL constraint added: " + value1 + " DCMPL " + value2 + " -> " + result);
 
@@ -155,7 +158,7 @@ public final class PathUtils {
                 System.out.println("PathUtils: " + value1 + " DCMPL " + value2 + " -> " + result);
             }
         } else {
-            System.out.println("⚠️ DCMPL not enabled or not symbolic: ENABLED=" + ENABLED + ", mightBeSymbolic="
+            System.out.println("⚠️ DCMPL not enabled or not symbolic: ENABLED=" + isEnabled() + ", mightBeSymbolic="
                     + mightBeSymbolic(value1, value2));
         }
 
@@ -174,7 +177,7 @@ public final class PathUtils {
             result = Double.compare(value1, value2);
         }
 
-        if (ENABLED && mightBeSymbolic(value1, value2)) {
+        if (isEnabled() && mightBeSymbolic(value1, value2)) {
             PATH_CONDITIONS.get().add(new Constraint(value1, value2, "DCMPG", result));
             System.out.println("✅ DCMPG constraint added: " + value1 + " DCMPG " + value2 + " -> " + result);
 
@@ -182,7 +185,7 @@ public final class PathUtils {
                 System.out.println("PathUtils: " + value1 + " DCMPG " + value2 + " -> " + result);
             }
         } else {
-            System.out.println("⚠️ DCMPG not enabled or not symbolic: ENABLED=" + ENABLED + ", mightBeSymbolic="
+            System.out.println("⚠️ DCMPG not enabled or not symbolic: ENABLED=" + isEnabled() + ", mightBeSymbolic="
                     + mightBeSymbolic(value1, value2));
         }
 
@@ -218,7 +221,7 @@ public final class PathUtils {
                 result = false;
         }
 
-        if (ENABLED && mightBeSymbolic(value1, value2)) {
+        if (isEnabled() && mightBeSymbolic(value1, value2)) {
             PATH_CONDITIONS.get().add(new Constraint(value1, value2, operation, result ? 1 : 0));
 
             if (DEBUG) {
@@ -246,7 +249,7 @@ public final class PathUtils {
                 result = false;
         }
 
-        if (ENABLED && mightBeSymbolic(value1, value2)) {
+        if (isEnabled() && mightBeSymbolic(value1, value2)) {
             PATH_CONDITIONS.get().add(new Constraint(value1, value2, operation, result ? 1 : 0));
 
             if (DEBUG) {

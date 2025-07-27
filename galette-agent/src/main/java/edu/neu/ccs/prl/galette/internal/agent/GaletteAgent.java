@@ -56,18 +56,25 @@ public final class GaletteAgent {
                 ProtectionDomain protectionDomain,
                 byte[] classFileBuffer) {
 
-            // Debug output to verify TransformerWrapper is being called
-            System.out.println("🔧 TransformerWrapper.transform() called for class: " + className);
+            // Debug transformation for specific classes only to avoid ClassCircularityError
+            if (className != null
+                    && className.equals("edu/neu/ccs/prl/galette/examples/transformation/BrakeDiscTransformation")) {
+                System.out.println("🔍 TransformerWrapper.transform() called for: " + className);
+            }
 
             if (classBeingRedefined != null) {
                 // The class is being redefined or retransformed
-                System.out.println("⚠️ Skipping class being redefined: " + className);
                 return null;
             }
 
-            System.out.println("🔧 Calling GaletteTransformer.transform() for: " + className);
             byte[] result = transformer.transform(classFileBuffer, false);
-            System.out.println("🔧 GaletteTransformer.transform() completed for: " + className);
+
+            if (className != null
+                    && className.equals("edu/neu/ccs/prl/galette/examples/transformation/BrakeDiscTransformation")) {
+                System.out.println("🔍 TransformerWrapper.transform() result for " + className + ": "
+                        + (result != null ? "transformed (" + result.length + " bytes)" : "null (no transformation)"));
+            }
+
             return result;
         }
     }

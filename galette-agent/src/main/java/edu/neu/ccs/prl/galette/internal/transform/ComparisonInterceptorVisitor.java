@@ -17,6 +17,7 @@ public class ComparisonInterceptorVisitor extends ClassVisitor {
 
     public ComparisonInterceptorVisitor(ClassVisitor cv) {
         super(GaletteTransformer.ASM_VERSION, cv);
+        System.out.println("🔍 ComparisonInterceptorVisitor created for class transformation");
     }
 
     @Override
@@ -30,10 +31,20 @@ public class ComparisonInterceptorVisitor extends ClassVisitor {
 
         public ComparisonMethodVisitor(MethodVisitor mv) {
             super(GaletteTransformer.ASM_VERSION, mv);
+            System.out.println("🔍 ComparisonMethodVisitor created for method transformation");
         }
 
         @Override
         public void visitInsn(int opcode) {
+            // Debug comparison instruction interception
+            if (opcode == Opcodes.LCMP
+                    || opcode == Opcodes.FCMPL
+                    || opcode == Opcodes.FCMPG
+                    || opcode == Opcodes.DCMPL
+                    || opcode == Opcodes.DCMPG) {
+                System.out.println("🎯 Intercepting comparison instruction: " + opcode);
+            }
+
             switch (opcode) {
                 case Opcodes.LCMP:
                     // Replace LCMP entirely with instrumented version
@@ -63,6 +74,13 @@ public class ComparisonInterceptorVisitor extends ClassVisitor {
 
         @Override
         public void visitJumpInsn(int opcode, Label label) {
+            // Debug jump instruction interception
+            if (opcode >= Opcodes.IF_ICMPEQ && opcode <= Opcodes.IF_ICMPLE
+                    || opcode == Opcodes.IF_ACMPEQ
+                    || opcode == Opcodes.IF_ACMPNE) {
+                System.out.println("🎯 Intercepting jump instruction: " + opcodeToString(opcode));
+            }
+
             switch (opcode) {
                 case Opcodes.IF_ICMPEQ:
                 case Opcodes.IF_ICMPNE:

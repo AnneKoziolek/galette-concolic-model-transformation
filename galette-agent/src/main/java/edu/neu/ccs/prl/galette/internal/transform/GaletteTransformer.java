@@ -53,20 +53,17 @@ public class GaletteTransformer {
         ClassReader cr = new ClassReader(classFileBuffer);
         String className = cr.getClassName();
 
-        // Debug output for ALL classes to see what's being transformed
-        System.out.println("🔧 GaletteTransformer.transform() called for class: " + className);
-
-        // Extra debug for our application classes
-        if (className.contains("BrakeDisc") || className.contains("ModelTransformation")) {
-            System.out.println("🔧 FOUND OUR CLASS: " + className);
-            boolean interceptorEnabled = Boolean.getBoolean("galette.concolic.interception.enabled");
-            System.out.println("🔧 interceptorEnabled = " + interceptorEnabled);
+        // Debug transformation for BrakeDiscTransformation to track path constraint collection
+        if (className.equals("edu/neu/ccs/prl/galette/examples/transformation/BrakeDiscTransformation")) {
+            System.out.println("🔍 GaletteTransformer.transform() called for: " + className);
         }
 
         TransformationCache currentCache = getCache();
         if (exclusions.isExcluded(className) || AsmUtil.isSet(cr.getAccess(), Opcodes.ACC_MODULE)) {
             // Skip excluded classes and module info
-            System.out.println("⚠️ Skipping excluded class: " + className);
+            if (className.equals("edu/neu/ccs/prl/galette/examples/transformation/BrakeDiscTransformation")) {
+                System.out.println("⚠️ Skipping excluded class: " + className);
+            }
             return null;
         }
         try {
@@ -75,6 +72,14 @@ public class GaletteTransformer {
                 return currentCache.loadEntry(className);
             }
             byte[] result = transformInternal(cr, isHostedAnonymous);
+
+            // Debug transformation result for BrakeDiscTransformation
+            if (className.equals("edu/neu/ccs/prl/galette/examples/transformation/BrakeDiscTransformation")) {
+                System.out.println(
+                        "🚨 CRITICAL: transformInternal completed for BrakeDiscTransformation, result length: "
+                                + (result != null ? result.length : "null"));
+            }
+
             if (!className.contains("$$Lambda")
                     && !AsmUtil.isSet(cr.getAccess(), Opcodes.ACC_SYNTHETIC)
                     && currentCache != null
@@ -103,7 +108,12 @@ public class GaletteTransformer {
     private byte[] transform(ClassReader cr, boolean propagate, boolean isHostedAnonymous) {
         ClassNode cn = new ClassNode(ASM_VERSION);
         cr.accept(cn, ClassReader.EXPAND_FRAMES);
+
+        // Check if already instrumented
         if (hasShadowInstrumentation(cn)) {
+            if (cn.name.equals("edu/neu/ccs/prl/galette/examples/transformation/BrakeDiscTransformation")) {
+                System.out.println("⚠️ BrakeDiscTransformation already has shadow instrumentation - skipping");
+            }
             // This class has already been instrumented; return null to indicate that the class was unchanged
             return null;
         }
@@ -134,10 +144,19 @@ public class GaletteTransformer {
         // Add comparison interceptor BEFORE other transformations
         boolean interceptorEnabled = Boolean.getBoolean("galette.concolic.interception.enabled");
 
+        // TEMPORARY: Force enable for debugging (system property not available at transformation time)
+        // The system property is set during JVM startup but transformation happens during class loading
+        if (cn.name.startsWith("edu/neu/ccs/prl/galette/examples/")) {
+            interceptorEnabled = true;
+            if (cn.name.equals("edu/neu/ccs/prl/galette/examples/transformation/BrakeDiscTransformation")) {
+                System.out.println("🎯 Force-enabled ComparisonInterceptorVisitor for BrakeDiscTransformation");
+            }
+        }
+
         // Only add interceptor for application classes and if enabled
         if (interceptorEnabled && !cn.name.startsWith("edu/neu/ccs/prl/galette/internal/")) {
-            if (cn.name.startsWith("edu/neu/ccs/prl/galette/examples/")) {
-                System.out.println("🔧 Adding ComparisonInterceptorVisitor for class: " + cn.name);
+            if (cn.name.equals("edu/neu/ccs/prl/galette/examples/transformation/BrakeDiscTransformation")) {
+                System.out.println("🎯 Adding ComparisonInterceptorVisitor to BrakeDiscTransformation");
             }
             cv = new ComparisonInterceptorVisitor(cv);
         }
