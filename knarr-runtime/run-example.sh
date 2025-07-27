@@ -2,14 +2,26 @@
 
 # Script to run the ModelTransformationExample with Galette instrumentation
 # This script creates instrumented Java and runs with proper agent configuration
+#
+# USAGE:
+#   ./run-example.sh                    # Normal run (builds only if needed)
+#   
+# To force rebuild specific components, edit the flags below:
+#   FORCE_REBUILD_AGENT=true           # Rebuild only galette-agent JAR (for agent changes)
+#   FORCE_REBUILD_CLASSES=true         # Rebuild only knarr-runtime classes (for code changes)
+#   FORCE_REBUILD_JAVA=true            # Rebuild only instrumented Java (for JDK issues)
+#   FORCE_CLEAN_BUILD=true             # Full clean rebuild (everything)
 
 set -e  # Exit on any error
 
 echo "🚀 Enhanced Galette Knarr Runtime Example"
 echo "=========================================="
 
-# TEMPORARY: Force clean rebuild (uncomment to always rebuild)
-FORCE_CLEAN_BUILD=true
+# Build configuration flags - set to true to force rebuild of specific components
+FORCE_CLEAN_BUILD=false        # Force complete clean rebuild (overrides everything)
+FORCE_REBUILD_AGENT=true      # Force rebuild galette-agent JAR only
+FORCE_REBUILD_CLASSES=false    # Force rebuild knarr-runtime Java classes only  
+FORCE_REBUILD_JAVA=false       # Force rebuild instrumented Java installation only
 
 # Function to check if compilation and instrumentation is needed
 needs_build() {
@@ -52,41 +64,95 @@ needs_build() {
     return 1  # false - no build needed
 }
 
-# Build project with instrumentation if needed
-if needs_build; then
-    echo "📦 Building project with Galette instrumentation..."
-    
-    # TEMPORARY: Clean rebuild - remove corrupted instrumented Java
-    if [ "$FORCE_CLEAN_BUILD" = "true" ] && [ -d "target/galette/java" ]; then
-        echo "🧹 Removing existing instrumented Java directory (corrupted)"
-        rm -rf target/galette/java
-    fi
-    
-    # Clean Maven target to force complete rebuild
-    echo "🧹 Cleaning Maven target directory..."
-    mvn clean -q
-    
-    # First build the galette-agent if needed
-    if [ ! -f "../galette-agent/target/galette-agent-1.0.0-SNAPSHOT.jar" ]; then
-        echo "🔨 Building galette-agent (required for instrumentation)..."
-        (cd ../galette-agent && mvn clean package -q -DskipTests)
-    fi
-    
-    # Then compile the Java classes
-    echo "🔨 Compiling Java classes..."
-    mvn compile -q
-    
-    # Then create instrumented Java via Maven plugin
-    echo "⚙️ Creating instrumented Java installation..."
-    mvn process-test-resources -q
-    
-    if [ $? -ne 0 ]; then
-        echo "❌ Build failed!"
-        exit 1
-    fi
-    echo "✅ Build completed successfully with instrumentation"
+# Determine what needs to be built
+need_agent_build=false
+need_classes_build=false
+need_java_build=false
+
+# Check individual build requirements
+if [ "$FORCE_CLEAN_BUILD" = "true" ]; then
+    echo "🧹 FORCE_CLEAN_BUILD enabled - forcing complete rebuild"
+    need_agent_build=true
+    need_classes_build=true
+    need_java_build=true
 else
-    echo "⚡ Using existing build and instrumentation"
+    # Check if galette-agent needs rebuild
+    if [ "$FORCE_REBUILD_AGENT" = "true" ] || [ ! -f "../galette-agent/target/galette-agent-1.0.0-SNAPSHOT.jar" ]; then
+        need_agent_build=true
+        echo "📦 Galette agent rebuild needed"
+    fi
+
+    # Check if Java classes need rebuild
+    if [ "$FORCE_REBUILD_CLASSES" = "true" ] || needs_build; then
+        need_classes_build=true
+        echo "📦 Java classes rebuild needed"
+    fi
+
+    # Check if instrumented Java needs rebuild
+    if [ "$FORCE_REBUILD_JAVA" = "true" ] || [ ! -d "target/galette/java" ]; then
+        need_java_build=true
+        echo "📦 Instrumented Java rebuild needed"
+    fi
+fi
+
+# Perform builds in correct order
+if [ "$need_agent_build" = "true" ] || [ "$need_classes_build" = "true" ] || [ "$need_java_build" = "true" ]; then
+    echo "📦 Building required components..."
+    
+    # Clean target if doing complete rebuild
+    if [ "$FORCE_CLEAN_BUILD" = "true" ]; then
+        echo "🧹 Cleaning Maven target directory..."
+        mvn clean -q
+        
+        # Remove instrumented Java if it exists
+        if [ -d "target/galette/java" ]; then
+            echo "🧹 Removing existing instrumented Java directory"
+            rm -rf target/galette/java
+        fi
+    fi
+    
+    # Step 1: Build galette-agent if needed
+    if [ "$need_agent_build" = "true" ]; then
+        echo "🔨 Building galette-agent..."
+        (cd ../galette-agent && mvn clean package -q -DskipTests)
+        if [ $? -ne 0 ]; then
+            echo "❌ Galette agent build failed!"
+            exit 1
+        fi
+        echo "✅ Galette agent built successfully"
+    else
+        echo "⚡ Using existing galette-agent JAR"
+    fi
+    
+    # Step 2: Compile Java classes if needed
+    if [ "$need_classes_build" = "true" ]; then
+        echo "🔨 Compiling Java classes..."
+        mvn compile -q
+        if [ $? -ne 0 ]; then
+            echo "❌ Java compilation failed!"
+            exit 1
+        fi
+        echo "✅ Java classes compiled successfully"
+    else
+        echo "⚡ Using existing compiled classes"
+    fi
+    
+    # Step 3: Create instrumented Java if needed
+    if [ "$need_java_build" = "true" ]; then
+        echo "⚙️ Creating instrumented Java installation..."
+        mvn process-test-resources -q
+        if [ $? -ne 0 ]; then
+            echo "❌ Instrumented Java creation failed!"
+            exit 1
+        fi
+        echo "✅ Instrumented Java created successfully"
+    else
+        echo "⚡ Using existing instrumented Java"
+    fi
+    
+    echo "✅ All required builds completed successfully"
+else
+    echo "⚡ All components up-to-date - no builds needed"
 fi
 
 # Verify instrumented Java exists
