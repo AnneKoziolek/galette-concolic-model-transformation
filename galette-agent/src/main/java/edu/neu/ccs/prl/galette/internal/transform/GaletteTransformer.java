@@ -53,9 +53,14 @@ public class GaletteTransformer {
         ClassReader cr = new ClassReader(classFileBuffer);
         String className = cr.getClassName();
 
-        // Debug output only for application classes
-        if (className.startsWith("edu/neu/ccs/prl/galette/examples/")) {
-            System.out.println("🔧 GaletteTransformer.transform() called for class: " + className);
+        // Debug output for ALL classes to see what's being transformed
+        System.out.println("🔧 GaletteTransformer.transform() called for class: " + className);
+
+        // Extra debug for our application classes
+        if (className.contains("BrakeDisc") || className.contains("ModelTransformation")) {
+            System.out.println("🔧 FOUND OUR CLASS: " + className);
+            boolean interceptorEnabled = Boolean.getBoolean("galette.concolic.interception.enabled");
+            System.out.println("🔧 interceptorEnabled = " + interceptorEnabled);
         }
 
         TransformationCache currentCache = getCache();

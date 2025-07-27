@@ -1,7 +1,7 @@
 package edu.neu.ccs.prl.galette.examples.transformation;
 
 import edu.neu.ccs.prl.galette.examples.models.source.BrakeDiscSource;
-import edu.neu.ccs.prl.galette.examples.models.target.BrakeDiscTarget;
+import edu.neu.ccs.prl.galette.examples.target.BrakeDiscTarget;
 import java.util.Scanner;
 
 /**

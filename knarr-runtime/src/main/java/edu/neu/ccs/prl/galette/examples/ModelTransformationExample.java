@@ -4,7 +4,7 @@ import edu.neu.ccs.prl.galette.concolic.knarr.runtime.GaletteSymbolicator;
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.PathConditionWrapper;
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.PathUtils;
 import edu.neu.ccs.prl.galette.examples.models.source.BrakeDiscSource;
-import edu.neu.ccs.prl.galette.examples.models.target.BrakeDiscTarget;
+import edu.neu.ccs.prl.galette.examples.target.BrakeDiscTarget;
 import edu.neu.ccs.prl.galette.examples.transformation.BrakeDiscTransformation;
 import edu.neu.ccs.prl.galette.examples.transformation.SymbolicExecutionWrapper;
 import edu.neu.ccs.prl.galette.internal.runtime.Tag;

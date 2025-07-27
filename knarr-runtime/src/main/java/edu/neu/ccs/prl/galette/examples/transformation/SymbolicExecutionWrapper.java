@@ -5,7 +5,7 @@ import edu.neu.ccs.prl.galette.concolic.knarr.runtime.PathConditionWrapper;
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.PathUtils;
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.SymbolicComparison;
 import edu.neu.ccs.prl.galette.examples.models.source.BrakeDiscSource;
-import edu.neu.ccs.prl.galette.examples.models.target.BrakeDiscTarget;
+import edu.neu.ccs.prl.galette.examples.target.BrakeDiscTarget;
 import edu.neu.ccs.prl.galette.internal.runtime.Tag;
 import java.util.*;
 import za.ac.sun.cs.green.expr.*;
