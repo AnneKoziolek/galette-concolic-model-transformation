@@ -55,11 +55,20 @@ public final class GaletteAgent {
                 Class<?> classBeingRedefined,
                 ProtectionDomain protectionDomain,
                 byte[] classFileBuffer) {
+
+            // Debug output to verify TransformerWrapper is being called
+            System.out.println("🔧 TransformerWrapper.transform() called for class: " + className);
+
             if (classBeingRedefined != null) {
                 // The class is being redefined or retransformed
+                System.out.println("⚠️ Skipping class being redefined: " + className);
                 return null;
             }
-            return transformer.transform(classFileBuffer, false);
+
+            System.out.println("🔧 Calling GaletteTransformer.transform() for: " + className);
+            byte[] result = transformer.transform(classFileBuffer, false);
+            System.out.println("🔧 GaletteTransformer.transform() completed for: " + className);
+            return result;
         }
     }
 }
