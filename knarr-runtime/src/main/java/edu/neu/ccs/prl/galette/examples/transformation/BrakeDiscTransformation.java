@@ -41,12 +41,25 @@ public class BrakeDiscTransformation {
      * @return Enhanced target model with computed properties
      */
     public static BrakeDiscTarget transform(BrakeDiscSource source, double thickness) {
+
+        // Temporary to debug: Verify the tag was set
+        edu.neu.ccs.prl.galette.internal.runtime.Tag verifyTag =
+                edu.neu.ccs.prl.galette.internal.runtime.Tainter.getTag(thickness);
+        System.out.println(
+                "BrakeDiscTransformation: encounter tag: " + (verifyTag != null ? verifyTag : "no tag") + ")");
+
         // Create target model and copy basic properties
         BrakeDiscTarget target = new BrakeDiscTarget();
         target.setDiameter(source.getDiameter());
         target.setMaterial(source.getMaterial());
         target.setCoolingVanes(source.getCoolingVanes());
         target.setThickness(thickness);
+
+        // Temporary to debug: Verify the tag was set
+        edu.neu.ccs.prl.galette.internal.runtime.Tag verifyTargetTag =
+                edu.neu.ccs.prl.galette.internal.runtime.Tainter.getTag(target.getThickness());
+        System.out.println("BrakeDiscTransformation: tag in transformation result: "
+                + (verifyTargetTag != null ? verifyTargetTag : "no tag") + ")");
 
         // Perform geometric calculations
         calculateGeometricProperties(source, thickness, target);

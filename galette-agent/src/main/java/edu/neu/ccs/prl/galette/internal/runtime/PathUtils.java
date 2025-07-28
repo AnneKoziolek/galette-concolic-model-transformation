@@ -57,8 +57,29 @@ public final class PathUtils {
 
         // Debug output to verify this method is being called
         if (DEBUG) {
-            System.out.println("🔍 mightBeSymbolic(" + value1 + ", " + value2 + ") -> hasTag1=" + hasTag1 + ", hasTag2="
-                    + hasTag2 + ", result=" + result);
+            System.out.println("🔍 mightBeSymbolic(Object " + value1 + ", Object" + value2 + ") -> hasTag1=" + hasTag1
+                    + ", hasTag2=" + hasTag2 + ", result=" + result);
+        }
+
+        return result;
+    }
+
+    /**
+     * Check if values might be symbolic by examining if they have Galette tags.
+     * Only collect constraints when at least one operand is actually tagged.
+     * Try a separate method for primitive types double as tag gets lost in mightBeSymbolic(Object value1, Object value2)
+     * TODO If this works, consider merging back into mightBeSymbolic(Object value1, Object value2) and access primitive type values via the getValue method of their respective object.
+     */
+    private static boolean mightBeSymbolic(double value1, double value2) {
+        // Key change: Check for actual Galette tags instead of heuristics
+        boolean hasTag1 = hasGaletteTag(value1);
+        boolean hasTag2 = hasGaletteTag(value2);
+        boolean result = hasTag1 || hasTag2;
+
+        // Debug output to verify this method is being called
+        if (DEBUG) {
+            System.out.println("🔍 mightBeSymbolic(double " + value1 + ", double " + value2 + ") -> hasTag1=" + hasTag1
+                    + ", hasTag2=" + hasTag2 + ", result=" + result);
         }
 
         return result;
@@ -73,10 +94,29 @@ public final class PathUtils {
         }
 
         try {
-            // Use Galette's Tainter to check for tags
+
             return Tainter.getTag(value) != null;
+
         } catch (Exception e) {
             // If tag checking fails, assume not symbolic
+            System.out.println("PathUtils: Tag checking for object failed, assuming " + value + " is not symbolic: "
+                    + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Check if a value has a Galette tag (is symbolic).
+     */
+    private static boolean hasGaletteTag(double value) {
+        try {
+
+            return Tainter.getTag(value) != null;
+
+        } catch (Exception e) {
+            // If tag checking fails, assume not symbolic
+            System.out.println("PathUtils: Tag checking for double failed, assuming " + value + " is not symbolic: "
+                    + e.getMessage());
             return false;
         }
     }

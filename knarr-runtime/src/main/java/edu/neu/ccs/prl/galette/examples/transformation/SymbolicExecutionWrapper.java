@@ -351,8 +351,8 @@ public class SymbolicExecutionWrapper {
         // Verify the tag was set
         edu.neu.ccs.prl.galette.internal.runtime.Tag verifyTag =
                 edu.neu.ccs.prl.galette.internal.runtime.Tainter.getTag(taggedThickness);
-        System.out.println("Created symbolic value: " + thicknessLabel + " = " + taggedThickness + " (tag: "
-                + (verifyTag != null ? verifyTag : "no tag") + ")");
+        System.out.println("SymbolicExecutionWrapper: Created symbolic value: " + thicknessLabel + " = "
+                + taggedThickness + " (tag: " + (verifyTag != null ? verifyTag : "no tag") + ")");
 
         // Use the clean transformation with the Galette-tagged value
         // The comparison operations will automatically be intercepted by Galette

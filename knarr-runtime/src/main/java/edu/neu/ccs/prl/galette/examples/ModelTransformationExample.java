@@ -262,8 +262,8 @@ public class ModelTransformationExample {
 
         // Verify the tag was applied
         Tag verifyTag = edu.neu.ccs.prl.galette.internal.runtime.Tainter.getTag(taggedThickness);
-        System.out.println("Created symbolic value: " + label + " = " + thickness + " (tag: "
-                + (verifyTag != null ? verifyTag : "no tag") + ")");
+        System.out.println("ModelTransformationExample: Created symbolic value: " + label + " = " + thickness
+                + " (tag: " + (verifyTag != null ? verifyTag : "no tag") + ")");
 
         // TEMPORARY: Direct comparison test to verify agent is working
         System.out.println("🔧 Testing direct comparison in ModelTransformationExample...");
