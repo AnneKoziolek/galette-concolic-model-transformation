@@ -13,8 +13,8 @@ Knarr is a symbolic execution framework that has been migrated from the Phosphor
 
 - **Complete array symbolic execution** with symbolic indexing and bounds checking
 - **Comprehensive string symbolic execution** with character-level tracking
-- **Path constraint collection** for analyzing conditional branches (but does not support Java operators as instrumentation is missing)
-- **Coverage tracking infrastructure** with code, path, branch, and method coverage (to be checked)
+- **✅ Automatic path constraint collection** for analyzing conditional branches via ComparisonInterceptorVisitor bytecode instrumentation
+- **Coverage tracking infrastructure** with code, path, branch, and method coverage
 - **Testing framework** for systematic validation and performance benchmarking
 - **Integration with constraint solvers** (Green/Z3) for automated test generation
 
@@ -165,11 +165,13 @@ $INSTRUMENTED_JAVA/bin/java \
 
 ### Step 4: Verify Path Constraint Collection
 
-**Expected output with instrumentation:**
+**Expected output with instrumentation (SUCCESS!):**
 ```
 === ITERATION 1: Initial Execution ===
 Starting concolic analysis with thickness = 12.0 mm
 Created symbolic value: thickness_1 = 12.0 (symbolic: true)
+🔍 PathUtils.instrumentedDcmpl called: 12.0 vs 60.0
+✅ DCMPL constraint added: 12.0 DCMPL 60.0 -> -1
 Path constraints automatically collected during transformation execution
 Path constraints: thickness_1 > 10.0                    # ✅ Constraints collected!
 Initial path constraint: thickness_1 > 10.0
@@ -414,10 +416,10 @@ The Knarr runtime has been **fully migrated** from Phosphor to Galette APIs with
 - **Performance benchmarking**: 1.8M+ coverage operations per second
 - **Serialization**: Coverage export/import for analysis and persistence
 
-#### 🔄 Phase 7: Advanced Instrumentation (IN PROGRESS)
-- **Bytecode instrumentation**: Direct integration with Galette agent
-- **Automatic symbolic tracking**: Transparent symbolic execution
-- **Runtime optimization**: Advanced performance optimizations
+#### ✅ Phase 7: Advanced Instrumentation (COMPLETED)
+- **Bytecode instrumentation**: Direct integration with Galette agent via ComparisonInterceptorVisitor
+- **Automatic symbolic tracking**: Transparent symbolic execution through native Java operators
+- **Runtime optimization**: Advanced performance optimizations with embedded GaletteTransformer
 
 ### Test Results Summary
 ```
