@@ -16,16 +16,16 @@ public final class PathUtils {
 
     // ===== CONFIGURATION =====
 
-    // Check system property dynamically instead of static final
+    // HARDCODED: Always enabled to eliminate system property dependency during transformation
     private static boolean isEnabled() {
-        return Boolean.getBoolean("galette.concolic.interception.enabled");
+        return true; // Always enabled - no system property dependency
     }
 
     static {
         try {
-            System.out.println("🔧 PathUtils static initializer: isEnabled() = " + isEnabled());
+            System.out.println("🔧 PathUtils static initializer: isEnabled() = " + isEnabled() + " (HARDCODED)");
             System.out.println("🔧 System property galette.concolic.interception.enabled = "
-                    + System.getProperty("galette.concolic.interception.enabled"));
+                    + System.getProperty("galette.concolic.interception.enabled") + " (IGNORED)");
         } catch (Throwable t) {
             System.err.println("❌ PathUtils static initializer failed: " + t);
             t.printStackTrace();

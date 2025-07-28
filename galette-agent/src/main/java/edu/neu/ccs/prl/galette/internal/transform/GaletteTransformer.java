@@ -49,14 +49,17 @@ public class GaletteTransformer {
 
     private static TransformationCache cache;
 
+    public GaletteTransformer() {
+        super();
+        System.out.println("GaletteTransformer initialized");
+    }
+
     public byte[] transform(byte[] classFileBuffer, boolean isHostedAnonymous) {
         ClassReader cr = new ClassReader(classFileBuffer);
         String className = cr.getClassName();
 
         // Don't log in System class itself -- might cause ClassCircularityError
-        if (!className.contains("System")) {
-            System.out.println("🔧 GaletteTransformer.transform() called for: " + className);
-        }
+        System.out.println("🔧 GaletteTransformer.transform() called for: " + className);
 
         // Debug transformation for BrakeDiscTransformation to track path constraint collection
         if (className.equals("edu/neu/ccs/prl/galette/examples/transformation/BrakeDiscTransformation")) {
@@ -74,6 +77,9 @@ public class GaletteTransformer {
         try {
             // Only cache dynamically instrumented files that are not synthetic
             if (currentCache != null && currentCache.hasEntry(className, classFileBuffer)) {
+                if (className.equals("edu/neu/ccs/prl/galette/examples/transformation/BrakeDiscTransformation")) {
+                    System.out.println("📦 Loading BrakeDiscTransformation from cache");
+                }
                 return currentCache.loadEntry(className);
             }
             byte[] result = transformInternal(cr, isHostedAnonymous);
@@ -147,21 +153,19 @@ public class GaletteTransformer {
         ClassVisitor cv = hasFrames ? cw : new FrameRemover(cw);
 
         // Add comparison interceptor BEFORE other transformations
-        boolean interceptorEnabled = Boolean.getBoolean("galette.concolic.interception.enabled");
+        // HARDCODED: Always enable for example classes (eliminates system property dependency)
+        boolean interceptorEnabled = cn.name.startsWith("edu/neu/ccs/prl/galette/examples/");
 
-        // TEMPORARY: Force enable for debugging (system property not available at transformation time)
-        // The system property is set during JVM startup but transformation happens during class loading
-        if (cn.name.startsWith("edu/neu/ccs/prl/galette/examples/")) {
-            interceptorEnabled = true;
-            if (cn.name.equals("edu/neu/ccs/prl/galette/examples/transformation/BrakeDiscTransformation")) {
-                System.out.println("🎯 Force-enabled ComparisonInterceptorVisitor for BrakeDiscTransformation");
-            }
+        if (interceptorEnabled
+                && cn.name.equals("edu/neu/ccs/prl/galette/examples/transformation/BrakeDiscTransformation")) {
+            System.out.println("🎯 ComparisonInterceptorVisitor HARDCODED ENABLED for BrakeDiscTransformation");
         }
 
         // Only add interceptor for application classes and if enabled
         if (interceptorEnabled && !cn.name.startsWith("edu/neu/ccs/prl/galette/internal/")) {
             if (cn.name.equals("edu/neu/ccs/prl/galette/examples/transformation/BrakeDiscTransformation")) {
-                System.out.println("🎯 Adding ComparisonInterceptorVisitor to BrakeDiscTransformation");
+                System.out.println(
+                        "🎯 Adding ComparisonInterceptorVisitor to BrakeDiscTransformation (HARDCODED ENABLED)");
             }
             cv = new ComparisonInterceptorVisitor(cv);
         }
@@ -201,23 +205,37 @@ public class GaletteTransformer {
     }
 
     private static boolean hasShadowInstrumentation(ClassNode cn) {
+        boolean isBrakeDisc = cn.name.equals("edu/neu/ccs/prl/galette/examples/transformation/BrakeDiscTransformation");
+
         if (cn.invisibleAnnotations != null) {
             for (AnnotationNode a : cn.invisibleAnnotations) {
                 if (ANNOTATION_DESC.equals(a.desc)) {
+                    if (isBrakeDisc) {
+                        System.out.println("🔍 Found GaletteInstrumented annotation on BrakeDiscTransformation");
+                    }
                     return true;
                 }
             }
         }
+
         for (MethodNode mn : cn.methods) {
             if (ShadowMethodCreator.isShadowMethod(mn.desc)) {
+                if (isBrakeDisc) {
+                    System.out.println("🔍 Found shadow method in BrakeDiscTransformation: " + mn.name + mn.desc);
+                }
                 return true;
             }
         }
+
         for (FieldNode fn : cn.fields) {
             if (ShadowFieldAdder.isShadowField(fn.name)) {
+                if (isBrakeDisc) {
+                    System.out.println("🔍 Found shadow field in BrakeDiscTransformation: " + fn.name);
+                }
                 return true;
             }
         }
+
         return false;
     }
 

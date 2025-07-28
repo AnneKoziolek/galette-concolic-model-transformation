@@ -27,11 +27,21 @@ public final class GaletteAgent {
     }
 
     public static void premain(String agentArgs, Instrumentation inst) throws IOException {
+        System.out.println("🚀 GaletteAgent.premain() called at " + new java.util.Date());
+        System.out.println("📍 Agent args: " + agentArgs);
+
         GaletteLog.initialize(System.err);
+
         String cachePath = System.getProperty("galette.cache");
+        System.out.println("💾 Cache path: " + cachePath);
+
         TransformationCache cache = cachePath == null ? null : new TransformationCache(new File(cachePath));
         GaletteTransformer.setCache(cache);
+
+        System.out.println("✅ Adding TransformerWrapper to instrumentation");
         inst.addTransformer(new TransformerWrapper());
+
+        System.out.println("✅ GaletteAgent initialization complete");
     }
 
     private static final class TransformerWrapper implements ClassFileTransformer {
@@ -60,7 +70,9 @@ public final class GaletteAgent {
             if (className != null
                     && className.equals("edu/neu/ccs/prl/galette/examples/transformation/BrakeDiscTransformation")) {
                 System.out.println("🔍 TransformerWrapper.transform() called for: " + className
-                        + ". classBeingRedefined: " + classBeingRedefined);
+                        + ". classBeingRedefined: " + classBeingRedefined + ". classFileBuffer length: "
+                        + (classFileBuffer != null ? classFileBuffer.length : "null") + ". loader: " + loader
+                        + ". protectionDomain: " + protectionDomain + ". GaletteTransformer: " + transformer);
             }
 
             if (classBeingRedefined != null) {
