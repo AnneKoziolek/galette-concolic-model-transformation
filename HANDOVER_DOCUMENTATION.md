@@ -67,6 +67,8 @@ galette-concolic-model-transformation/
 **Core Features:**
 - ✅ **Array symbolic execution**: Symbolic indexing, bounds checking, multi-dimensional arrays (22K+ ops/sec)
 - ✅ **String symbolic execution**: Character-level tracking, all string operations (108K+ ops/sec)
+- ✅ **Tag-based constraint filtering**: Only collects constraints from tagged (symbolic) values, eliminating noise from utility code
+- ✅ **Automatic comparison interception**: Zero-code-change path constraint collection from native Java operators
 - ✅ **Path constraint collection**: Green solver integration for automated solving
 - ✅ **Coverage tracking**: Code, path, branch, method coverage (1.8M+ ops/sec)
 
@@ -292,6 +294,24 @@ mvn process-test-resources  # Creates target/galette/java/
 
 # Option 2: Manual instrumentation
 java -jar galette-instrument.jar $JAVA_HOME ./instrumented-java
+
+# Option 3: Rebuild with updated Galette classes (when modifying GaletteTransformer)
+./rebuild-instrumented-java.sh  # Rebuilds instrumented Java with latest changes
+```
+
+**🔥: Rebuilding Instrumented Java**
+When modifying GaletteTransformer or PathUtils, you MUST rebuild the instrumented Java because these classes are embedded during the jlink process. Use the provided script:
+
+```bash
+# After modifying galette-agent classes:
+cd knarr-runtime
+./rebuild-instrumented-java.sh
+
+# This script automatically:
+# 1. Rebuilds galette-agent with your changes
+# 2. Rebuilds galette-instrument 
+# 3. Deletes old instrumented Java
+# 4. Creates new instrumented Java with embedded updated classes
 ```
 
 **Without proper instrumentation:**

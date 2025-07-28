@@ -14,6 +14,7 @@ Knarr is a symbolic execution framework that has been migrated from the Phosphor
 - **Complete array symbolic execution** with symbolic indexing and bounds checking
 - **Comprehensive string symbolic execution** with character-level tracking
 - **✅ Automatic path constraint collection** for analyzing conditional branches via ComparisonInterceptorVisitor bytecode instrumentation
+- **✅ Tag-based constraint filtering** - only collects constraints from tagged (symbolic) values, eliminating noise from utility code
 - **Coverage tracking infrastructure** with code, path, branch, and method coverage
 - **Testing framework** for systematic validation and performance benchmarking
 - **Integration with constraint solvers** (Green/Z3) for automated test generation
@@ -39,6 +40,9 @@ Initial path constraint: no constraints
 Path constraints: thickness_1 > 10.0  // ✅ Constraints collected
 Initial path constraint: thickness_1 > 10.0
 ```
+
+**Key Feature: Tag-Based Constraint Filtering**
+Only constraints involving at least one tagged (symbolic) value are collected, eliminating noise from utility code like loop counters while preserving constraints from important operations like `Arrays.sort()` when called with tagged values. (not tested yet for Arrays)
 
 ## Use Cases
 
@@ -128,6 +132,15 @@ java -jar galette-instrument/target/galette-instrument-1.0.0-SNAPSHOT.jar \
 ```
 
 ### Step 3: Run with Galette Agent
+
+**Development Note: Rebuilding Instrumented Java**
+When modifying Galette agent classes (GaletteTransformer, PathUtils), you must rebuild the instrumented Java since these classes are embedded during the jlink process:
+
+```bash
+cd knarr-runtime
+./rebuild-instrumented-java.sh  # Rebuilds instrumented Java with updated classes
+./run-example.sh                # Test with updated implementation
+```
 
 **Correct execution with all required arguments:**
 
@@ -419,6 +432,7 @@ The Knarr runtime has been **fully migrated** from Phosphor to Galette APIs with
 #### ✅ Phase 7: Advanced Instrumentation (COMPLETED)
 - **Bytecode instrumentation**: Direct integration with Galette agent via ComparisonInterceptorVisitor
 - **Automatic symbolic tracking**: Transparent symbolic execution through native Java operators
+- **✅ Tag-based constraint filtering**: Smart filtering eliminates noise from utility code while preserving constraints from tagged values
 - **Runtime optimization**: Advanced performance optimizations with embedded GaletteTransformer
 
 ### Test Results Summary

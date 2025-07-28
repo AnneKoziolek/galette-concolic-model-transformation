@@ -190,6 +190,8 @@ This project includes a Knarr integration that demonstrates how to use Galette f
 **Key Features:**
 - ✅ **Automatic symbolic execution** for model-driven engineering workflows via bytecode instrumentation
 - ✅ **Zero-code-change path constraint collection** from native Java comparison operators
+- ✅ **Tag-based constraint filtering** - only collects constraints from tagged (symbolic) values, eliminating noise
+- ✅ **Smart filtering** - works with complex applications like `Arrays.sort()` when called with tagged values
 - ✅ **Path constraint collection** for automated test generation
 - ✅ **Integration with constraint solvers** (Green/Z3)
 
@@ -204,6 +206,14 @@ See the [Knarr Integration Documentation](KNARR_INTEGRATION.md) for detailed inf
 ```bash
 cd knarr-runtime
 ./run-example.sh
+```
+
+**Development Note:**
+When modifying Galette agent classes (GaletteTransformer, PathUtils), rebuild the instrumented Java:
+```bash
+cd knarr-runtime
+./rebuild-instrumented-java.sh  # Embeds updated classes in instrumented Java
+./run-example.sh                # Test with updated implementation
 ```
 
 ## Acknowledgements
