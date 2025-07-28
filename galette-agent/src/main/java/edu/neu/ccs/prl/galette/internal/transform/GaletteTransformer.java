@@ -58,9 +58,6 @@ public class GaletteTransformer {
         ClassReader cr = new ClassReader(classFileBuffer);
         String className = cr.getClassName();
 
-        // Don't log in System class itself -- might cause ClassCircularityError
-        System.out.println("🔧 GaletteTransformer.transform() called for: " + className);
-
         // Debug transformation for BrakeDiscTransformation to track path constraint collection
         if (className.equals("edu/neu/ccs/prl/galette/examples/transformation/BrakeDiscTransformation")) {
             System.out.println("🔍 GaletteTransformer.transform() called for: " + className);
@@ -86,9 +83,8 @@ public class GaletteTransformer {
 
             // Debug transformation result for BrakeDiscTransformation
             if (className.equals("edu/neu/ccs/prl/galette/examples/transformation/BrakeDiscTransformation")) {
-                System.out.println(
-                        "🚨 CRITICAL: transformInternal completed for BrakeDiscTransformation, result length: "
-                                + (result != null ? result.length : "null"));
+                System.out.println("🔍 TransformInternal completed for BrakeDiscTransformation, result length: "
+                        + (result != null ? result.length : "null"));
             }
 
             if (!className.contains("$$Lambda")
