@@ -34,8 +34,6 @@ public final class PathUtils {
 
     private static final boolean DEBUG = Boolean.getBoolean("galette.concolic.interception.debug");
 
-    private static final boolean PERFORMANCE_MODE = Boolean.getBoolean("galette.concolic.interception.performance");
-
     // ===== THREAD-LOCAL STORAGE =====
 
     private static final ThreadLocal<List<Constraint>> PATH_CONDITIONS = new ThreadLocal<List<Constraint>>() {
@@ -48,36 +46,39 @@ public final class PathUtils {
     // ===== SYMBOLIC VALUE DETECTION =====
 
     /**
-     * Simple heuristic to determine if values might be symbolic.
-     * Avoids complex reflection in performance-critical code.
+     * Check if values might be symbolic by examining if they have Galette tags.
+     * Only collect constraints when at least one operand is actually tagged.
      */
     private static boolean mightBeSymbolic(Object value1, Object value2) {
-        if (!PERFORMANCE_MODE) {
-            return true; // Always log when performance mode is disabled
+        // Key change: Check for actual Galette tags instead of heuristics
+        boolean hasTag1 = hasGaletteTag(value1);
+        boolean hasTag2 = hasGaletteTag(value2);
+        boolean result = hasTag1 || hasTag2;
+
+        // Debug output to verify this method is being called
+        if (DEBUG) {
+            System.out.println("🔍 mightBeSymbolic(" + value1 + ", " + value2 + ") -> hasTag1=" + hasTag1 + ", hasTag2="
+                    + hasTag2 + ", result=" + result);
         }
 
-        // Heuristic: values are likely symbolic if they're not simple constants
-        return !isSimpleConstant(value1) || !isSimpleConstant(value2);
+        return result;
     }
 
-    private static boolean isSimpleConstant(Object value) {
-        if (value instanceof Integer) {
-            int val = (Integer) value;
-            return val >= -1 && val <= 10;
+    /**
+     * Check if a value has a Galette tag (is symbolic).
+     */
+    private static boolean hasGaletteTag(Object value) {
+        if (value == null) {
+            return false;
         }
-        if (value instanceof Long) {
-            long val = (Long) value;
-            return val >= -1L && val <= 10L;
+
+        try {
+            // Use Galette's Tainter to check for tags
+            return Tainter.getTag(value) != null;
+        } catch (Exception e) {
+            // If tag checking fails, assume not symbolic
+            return false;
         }
-        if (value instanceof Float) {
-            float val = (Float) value;
-            return val >= -1.0f && val <= 10.0f && val == (int) val;
-        }
-        if (value instanceof Double) {
-            double val = (Double) value;
-            return val >= -1.0 && val <= 10.0 && val == (int) val;
-        }
-        return false;
     }
 
     // ===== INSTRUMENTED COMPARISON OPERATIONS =====
