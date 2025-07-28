@@ -38,7 +38,12 @@ public final class PathUtils {
 
     // ===== THREAD-LOCAL STORAGE =====
 
-    private static final ThreadLocal<List<Constraint>> PATH_CONDITIONS = ThreadLocal.withInitial(ArrayList::new);
+    private static final ThreadLocal<List<Constraint>> PATH_CONDITIONS = new ThreadLocal<List<Constraint>>() {
+        @Override
+        protected List<Constraint> initialValue() {
+            return new ArrayList<>();
+        }
+    };
 
     // ===== SYMBOLIC VALUE DETECTION =====
 
@@ -84,7 +89,12 @@ public final class PathUtils {
         int result = Long.compare(value1, value2);
 
         if (isEnabled() && mightBeSymbolic(value1, value2)) {
-            PATH_CONDITIONS.get().add(new Constraint(value1, value2, "LCMP", result));
+            List<Constraint> conditions = PATH_CONDITIONS.get();
+            if (conditions == null) {
+                conditions = new ArrayList<>();
+                PATH_CONDITIONS.set(conditions);
+            }
+            conditions.add(new Constraint(value1, value2, "LCMP", result));
 
             if (DEBUG) {
                 System.out.println("PathUtils: " + value1 + " LCMP " + value2 + " -> " + result);
@@ -222,7 +232,12 @@ public final class PathUtils {
         }
 
         if (isEnabled() && mightBeSymbolic(value1, value2)) {
-            PATH_CONDITIONS.get().add(new Constraint(value1, value2, operation, result ? 1 : 0));
+            List<Constraint> conditions = PATH_CONDITIONS.get();
+            if (conditions == null) {
+                conditions = new ArrayList<>();
+                PATH_CONDITIONS.set(conditions);
+            }
+            conditions.add(new Constraint(value1, value2, operation, result ? 1 : 0));
 
             if (DEBUG) {
                 System.out.println("PathUtils: " + value1 + " " + operation + " " + value2 + " -> " + result);
@@ -250,7 +265,12 @@ public final class PathUtils {
         }
 
         if (isEnabled() && mightBeSymbolic(value1, value2)) {
-            PATH_CONDITIONS.get().add(new Constraint(value1, value2, operation, result ? 1 : 0));
+            List<Constraint> conditions = PATH_CONDITIONS.get();
+            if (conditions == null) {
+                conditions = new ArrayList<>();
+                PATH_CONDITIONS.set(conditions);
+            }
+            conditions.add(new Constraint(value1, value2, operation, result ? 1 : 0));
 
             if (DEBUG) {
                 System.out.println("PathUtils: " + value1 + " " + operation + " " + value2 + " -> " + result);

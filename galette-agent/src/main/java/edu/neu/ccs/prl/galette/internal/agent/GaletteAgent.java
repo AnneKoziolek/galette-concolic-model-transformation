@@ -80,7 +80,33 @@ public final class GaletteAgent {
                 return null;
             }
 
-            byte[] result = transformer.transform(classFileBuffer, false);
+            byte[] result = null;
+            try {
+                if (className != null
+                        && className.equals(
+                                "edu/neu/ccs/prl/galette/examples/transformation/BrakeDiscTransformation")) {
+                    System.out.println("🔍 About to call transformer.transform()");
+                    System.out.println(
+                            "🔍 Transformer class: " + transformer.getClass().getName());
+                    System.out.println("🔍 Transformer classloader: "
+                            + transformer.getClass().getClassLoader());
+                    System.out.println("🔍 Transformer location: "
+                            + transformer.getClass().getProtectionDomain().getCodeSource());
+                }
+
+                result = transformer.transform(classFileBuffer, false);
+
+                if (className != null
+                        && className.equals(
+                                "edu/neu/ccs/prl/galette/examples/transformation/BrakeDiscTransformation")) {
+                    System.out.println(
+                            "🔍 transformer.transform() returned: " + (result != null ? "transformed" : "null"));
+                }
+            } catch (Throwable t) {
+                System.err.println("❌ Exception in transformer.transform() for " + className + ": " + t);
+                t.printStackTrace();
+                throw t;
+            }
 
             if (className != null
                     && className.equals("edu/neu/ccs/prl/galette/examples/transformation/BrakeDiscTransformation")) {
