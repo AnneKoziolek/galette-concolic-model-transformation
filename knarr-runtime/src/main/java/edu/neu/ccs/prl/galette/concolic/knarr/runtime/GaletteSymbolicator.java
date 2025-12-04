@@ -109,6 +109,9 @@ public class GaletteSymbolicator {
             tagToExpression.put(symbolicTag, var);
             valueToTag.put(concreteValue, symbolicTag);
 
+            // Add label to PathUtils for tag-based filtering
+            edu.neu.ccs.prl.galette.internal.runtime.PathUtils.addUserSymbolicLabel(label);
+
             if (DEBUG) {
                 System.out.println("Created symbolic int: " + label + " = " + concreteValue);
             }
@@ -176,6 +179,9 @@ public class GaletteSymbolicator {
             RealVariable var = new RealVariable(label, null, null);
             tagToExpression.put(symbolicTag, var);
             valueToTag.put(taggedValue, symbolicTag);
+
+            // Add label to PathUtils for tag-based filtering
+            edu.neu.ccs.prl.galette.internal.runtime.PathUtils.addUserSymbolicLabel(label);
 
             if (DEBUG) {
                 System.out.println("Created symbolic double with Galette tagging: " + label + " = " + concreteValue);
@@ -559,6 +565,8 @@ public class GaletteSymbolicator {
         mySoln = null;
         GaletteGreenBridge.clearVariableCache();
         PathUtils.reset();
+        // Clear user symbolic labels in PathUtils
+        edu.neu.ccs.prl.galette.internal.runtime.PathUtils.clearUserSymbolicLabels();
 
         if (DEBUG) {
             System.out.println("Reset GaletteSymbolicator state");

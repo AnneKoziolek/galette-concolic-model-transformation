@@ -62,12 +62,22 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# Step 5: Build the knarr-runtime classes
+echo ""
+echo "📦 Step 5: Building knarr-runtime classes..."
+mvn compile -q
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to build knarr-runtime classes!"
+    exit 1
+fi
+echo "✅ knarr-runtime classes compiled successfully"
+
 echo ""
 echo "✅ SUCCESS! Instrumented Java rebuilt with updated GaletteTransformer"
 echo ""
 echo "The instrumented Java at target/galette/java now contains:"
 echo "- Our modified GaletteTransformer with debug output"
 echo "- Hardcoded enabled ComparisonInterceptorVisitor"
-echo "- Hardcoded enabled PathUtils"
+echo "- Hardcoded enabled PathUtils with ThreadLocal initialization"
 echo ""
 echo "Next step: Run ./run-example.sh to test path constraint collection"

@@ -1,6 +1,8 @@
 package edu.neu.ccs.prl.galette.internal.runtime;
 
 import java.util.*;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Runtime path constraint collection using replacement strategy for bytecode operations.
@@ -46,79 +48,101 @@ public final class PathUtils {
     // ===== SYMBOLIC VALUE DETECTION =====
 
     /**
-     * Check if values might be symbolic by examining if they have Galette tags.
-     * Only collect constraints when at least one operand is actually tagged.
+     * Cache for user-defined symbolic labels.
+     * This is populated by the concolic execution framework when creating symbolic values.
+     */
+    private static final Set<Object> USER_SYMBOLIC_LABELS = new HashSet<>();
+
+    /**
+     * Add a user-defined symbolic label to track.
+     */
+    public static void addUserSymbolicLabel(Object label) {
+        if (label != null) {
+            USER_SYMBOLIC_LABELS.add(label);
+            if (DEBUG) {
+                System.out.println("🏷️ PathUtils: Added user symbolic label: " + label);
+            }
+        }
+    }
+
+    /**
+     * Clear all user-defined symbolic labels.
+     */
+    public static void clearUserSymbolicLabels() {
+        USER_SYMBOLIC_LABELS.clear();
+    }
+
+    /**
+     * Check if values might be symbolic by examining their tags' labels.
+     * Since Tainter.getTag() is a placeholder that returns null without instrumentation,
+     * we need to pass the tags directly from the instrumented comparison operations.
+     */
+    private static boolean mightBeSymbolic(Tag tag1, Tag tag2) {
+        boolean hasUserTag1 = isUserSymbolicTag(tag1);
+        boolean hasUserTag2 = isUserSymbolicTag(tag2);
+        boolean result = hasUserTag1 || hasUserTag2;
+
+        if (DEBUG) {
+            System.out.println("🔍 mightBeSymbolic(tag1=" + tag1 + ", tag2=" + tag2 + ") -> hasUserTag1="
+                    + hasUserTag1 + ", hasUserTag2=" + hasUserTag2 + ", result="
+                    + result);
+        }
+
+        return result;
+    }
+
+    /**
+     * Check if a tag contains any user-defined symbolic labels.
+     */
+    private static boolean isUserSymbolicTag(Tag tag) {
+        if (tag == null || tag.isEmpty()) {
+            return false;
+        }
+
+        Object[] labels = Tag.getLabels(tag);
+        if (labels == null || labels.length == 0) {
+            return false;
+        }
+
+        // Check if any label in the tag matches our user-defined symbolic labels
+        for (Object label : labels) {
+            if (USER_SYMBOLIC_LABELS.contains(label)) {
+                if (DEBUG) {
+                    System.out.println("🏷️ Found user symbolic label: " + label);
+                }
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Temporary workaround: Since we can't access tags from values without proper
+     * instrumentation context, we'll collect all constraints for now.
+     * TODO: Implement proper tag-based filtering when we have the infrastructure.
      */
     private static boolean mightBeSymbolic(Object value1, Object value2) {
-        // Key change: Check for actual Galette tags instead of heuristics
-        boolean hasTag1 = hasGaletteTag(value1);
-        boolean hasTag2 = hasGaletteTag(value2);
-        boolean result = hasTag1 || hasTag2;
-
-        // Debug output to verify this method is being called
+        // For now, collect all constraints to get the system working
+        // This was the original behavior that worked
         if (DEBUG) {
-            System.out.println("🔍 mightBeSymbolic(Object " + value1 + ", Object" + value2 + ") -> hasTag1=" + hasTag1
-                    + ", hasTag2=" + hasTag2 + ", result=" + result);
+            System.out.println("🔍 mightBeSymbolic(Object " + value1 + ", " + value2 + ") -> true (collecting all)");
         }
-
-        return result;
+        return true; // Collect all constraints temporarily
     }
 
     /**
-     * Check if values might be symbolic by examining if they have Galette tags.
-     * Only collect constraints when at least one operand is actually tagged.
-     * Try a separate method for primitive types double as tag gets lost in mightBeSymbolic(Object value1, Object value2)
-     * TODO If this works, consider merging back into mightBeSymbolic(Object value1, Object value2) and access primitive type values via the getValue method of their respective object.
+     * Temporary workaround: Since we can't access tags from values without proper
+     * instrumentation context, we'll collect all constraints for now.
+     * TODO: Implement proper tag-based filtering when we have the infrastructure.
      */
     private static boolean mightBeSymbolic(double value1, double value2) {
-        // Key change: Check for actual Galette tags instead of heuristics
-        boolean hasTag1 = hasGaletteTag(value1);
-        boolean hasTag2 = hasGaletteTag(value2);
-        boolean result = hasTag1 || hasTag2;
-
-        // Debug output to verify this method is being called
+        // For now, collect all constraints to get the system working
+        // This was the original behavior that worked
         if (DEBUG) {
-            System.out.println("🔍 mightBeSymbolic(double " + value1 + ", double " + value2 + ") -> hasTag1=" + hasTag1
-                    + ", hasTag2=" + hasTag2 + ", result=" + result);
+            System.out.println("🔍 mightBeSymbolic(double " + value1 + ", " + value2 + ") -> true (collecting all)");
         }
-
-        return result;
-    }
-
-    /**
-     * Check if a value has a Galette tag (is symbolic).
-     */
-    private static boolean hasGaletteTag(Object value) {
-        if (value == null) {
-            return false;
-        }
-
-        try {
-
-            return Tainter.getTag(value) != null;
-
-        } catch (Exception e) {
-            // If tag checking fails, assume not symbolic
-            System.out.println("PathUtils: Tag checking for object failed, assuming " + value + " is not symbolic: "
-                    + e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Check if a value has a Galette tag (is symbolic).
-     */
-    private static boolean hasGaletteTag(double value) {
-        try {
-
-            return Tainter.getTag(value) != null;
-
-        } catch (Exception e) {
-            // If tag checking fails, assume not symbolic
-            System.out.println("PathUtils: Tag checking for double failed, assuming " + value + " is not symbolic: "
-                    + e.getMessage());
-            return false;
-        }
+        return true; // Collect all constraints temporarily
     }
 
     // ===== INSTRUMENTED COMPARISON OPERATIONS =====
@@ -131,10 +155,6 @@ public final class PathUtils {
 
         if (isEnabled() && mightBeSymbolic(value1, value2)) {
             List<Constraint> conditions = PATH_CONDITIONS.get();
-            if (conditions == null) {
-                conditions = new ArrayList<>();
-                PATH_CONDITIONS.set(conditions);
-            }
             conditions.add(new Constraint(value1, value2, "LCMP", result));
 
             if (DEBUG) {
@@ -274,10 +294,6 @@ public final class PathUtils {
 
         if (isEnabled() && mightBeSymbolic(value1, value2)) {
             List<Constraint> conditions = PATH_CONDITIONS.get();
-            if (conditions == null) {
-                conditions = new ArrayList<>();
-                PATH_CONDITIONS.set(conditions);
-            }
             conditions.add(new Constraint(value1, value2, operation, result ? 1 : 0));
 
             if (DEBUG) {
@@ -307,10 +323,6 @@ public final class PathUtils {
 
         if (isEnabled() && mightBeSymbolic(value1, value2)) {
             List<Constraint> conditions = PATH_CONDITIONS.get();
-            if (conditions == null) {
-                conditions = new ArrayList<>();
-                PATH_CONDITIONS.set(conditions);
-            }
             conditions.add(new Constraint(value1, value2, operation, result ? 1 : 0));
 
             if (DEBUG) {
