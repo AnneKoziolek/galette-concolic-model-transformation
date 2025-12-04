@@ -17,6 +17,15 @@ set -e  # Exit on any error
 echo "🚀 Enhanced Galette Knarr Runtime Example"
 echo "=========================================="
 
+# Ensure Java 17 is used for builds and execution
+export JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"
+export PATH="$JAVA_HOME/bin:$PATH"
+
+echo "☕ Java Configuration:"
+echo "   JAVA_HOME: $JAVA_HOME"
+echo "   Java version: $(java -version 2>&1 | head -1)"
+echo ""
+
 # Build configuration flags - set to true to force rebuild of specific components
 FORCE_CLEAN_BUILD=false        # Force complete clean rebuild (overrides everything)
 FORCE_REBUILD_AGENT=false      # Force rebuild galette-agent JAR only

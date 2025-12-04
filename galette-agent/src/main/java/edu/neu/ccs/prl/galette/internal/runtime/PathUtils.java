@@ -154,8 +154,18 @@ public final class PathUtils {
         int result = Long.compare(value1, value2);
 
         if (isEnabled() && mightBeSymbolic(value1, value2)) {
-            List<Constraint> conditions = PATH_CONDITIONS.get();
-            conditions.add(new Constraint(value1, value2, "LCMP", result));
+            try {
+                List<Constraint> conditions = PATH_CONDITIONS.get();
+                if (conditions == null) {
+                    System.err.println("❌ LCMP: PATH_CONDITIONS.get() returned null! Initializing new list...");
+                    conditions = new ArrayList<>();
+                    PATH_CONDITIONS.set(conditions);
+                }
+                conditions.add(new Constraint(value1, value2, "LCMP", result));
+            } catch (Exception e) {
+                System.err.println("❌ LCMP error adding constraint: " + e);
+                e.printStackTrace();
+            }
 
             if (DEBUG) {
                 System.out.println("PathUtils: " + value1 + " LCMP " + value2 + " -> " + result);
@@ -177,7 +187,18 @@ public final class PathUtils {
         }
 
         if (isEnabled() && mightBeSymbolic(value1, value2)) {
-            PATH_CONDITIONS.get().add(new Constraint(value1, value2, "FCMPL", result));
+            try {
+                List<Constraint> conditions = PATH_CONDITIONS.get();
+                if (conditions == null) {
+                    System.err.println("❌ FCMPL: PATH_CONDITIONS.get() returned null! Initializing new list...");
+                    conditions = new ArrayList<>();
+                    PATH_CONDITIONS.set(conditions);
+                }
+                conditions.add(new Constraint(value1, value2, "FCMPL", result));
+            } catch (Exception e) {
+                System.err.println("❌ FCMPL error adding constraint: " + e);
+                e.printStackTrace();
+            }
 
             if (DEBUG) {
                 System.out.println("PathUtils: " + value1 + " FCMPL " + value2 + " -> " + result);
@@ -199,7 +220,18 @@ public final class PathUtils {
         }
 
         if (isEnabled() && mightBeSymbolic(value1, value2)) {
-            PATH_CONDITIONS.get().add(new Constraint(value1, value2, "FCMPG", result));
+            try {
+                List<Constraint> conditions = PATH_CONDITIONS.get();
+                if (conditions == null) {
+                    System.err.println("❌ FCMPG: PATH_CONDITIONS.get() returned null! Initializing new list...");
+                    conditions = new ArrayList<>();
+                    PATH_CONDITIONS.set(conditions);
+                }
+                conditions.add(new Constraint(value1, value2, "FCMPG", result));
+            } catch (Exception e) {
+                System.err.println("❌ FCMPG error adding constraint: " + e);
+                e.printStackTrace();
+            }
 
             if (DEBUG) {
                 System.out.println("PathUtils: " + value1 + " FCMPG " + value2 + " -> " + result);
@@ -222,8 +254,19 @@ public final class PathUtils {
         }
 
         if (isEnabled() && mightBeSymbolic(value1, value2)) {
-            PATH_CONDITIONS.get().add(new Constraint(value1, value2, "DCMPL", result));
-            System.out.println("✅ DCMPL constraint added: " + value1 + " DCMPL " + value2 + " -> " + result);
+            try {
+                List<Constraint> conditions = PATH_CONDITIONS.get();
+                if (conditions == null) {
+                    System.err.println("❌ DCMPL: PATH_CONDITIONS.get() returned null! Initializing new list...");
+                    conditions = new ArrayList<>();
+                    PATH_CONDITIONS.set(conditions);
+                }
+                conditions.add(new Constraint(value1, value2, "DCMPL", result));
+                System.out.println("✅ DCMPL constraint added: " + value1 + " DCMPL " + value2 + " -> " + result);
+            } catch (Exception e) {
+                System.err.println("❌ DCMPL error adding constraint: " + e);
+                e.printStackTrace();
+            }
 
             if (DEBUG) {
                 System.out.println("PathUtils: " + value1 + " DCMPL " + value2 + " -> " + result);
@@ -249,8 +292,19 @@ public final class PathUtils {
         }
 
         if (isEnabled() && mightBeSymbolic(value1, value2)) {
-            PATH_CONDITIONS.get().add(new Constraint(value1, value2, "DCMPG", result));
-            System.out.println("✅ DCMPG constraint added: " + value1 + " DCMPG " + value2 + " -> " + result);
+            try {
+                List<Constraint> conditions = PATH_CONDITIONS.get();
+                if (conditions == null) {
+                    System.err.println("❌ DCMPG: PATH_CONDITIONS.get() returned null! Initializing new list...");
+                    conditions = new ArrayList<>();
+                    PATH_CONDITIONS.set(conditions);
+                }
+                conditions.add(new Constraint(value1, value2, "DCMPG", result));
+                System.out.println("✅ DCMPG constraint added: " + value1 + " DCMPG " + value2 + " -> " + result);
+            } catch (Exception e) {
+                System.err.println("❌ DCMPG error adding constraint: " + e);
+                e.printStackTrace();
+            }
 
             if (DEBUG) {
                 System.out.println("PathUtils: " + value1 + " DCMPG " + value2 + " -> " + result);
