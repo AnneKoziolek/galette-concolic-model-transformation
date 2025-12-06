@@ -4,9 +4,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import edu.neu.ccs.prl.galette.concolic.knarr.green.GaletteGreenBridge;
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.ConcolicControlStack;
+import edu.neu.ccs.prl.galette.concolic.knarr.runtime.GalettePathUtils;
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.GaletteTaintListener;
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.PathConditionWrapper;
-import edu.neu.ccs.prl.galette.concolic.knarr.runtime.PathUtils;
 import edu.neu.ccs.prl.galette.internal.runtime.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -105,7 +105,7 @@ public class GaletteKnarrIntegrationTest {
     @Test
     public void testTaintListenerBranchHandling() {
         // Test concolic listener branch handling
-        PathConditionWrapper initialPC = PathUtils.getCurPC();
+        PathConditionWrapper initialPC = GalettePathUtils.getCurPC();
         int initialConstraints = initialPC.size();
 
         Tag branchTag = Tag.of("branch_condition");
@@ -113,7 +113,7 @@ public class GaletteKnarrIntegrationTest {
 
         // Should have added a constraint and updated control stack
         assertTrue(ConcolicControlStack.hasControlFlow());
-        PathConditionWrapper updatedPC = PathUtils.getCurPC();
+        PathConditionWrapper updatedPC = GalettePathUtils.getCurPC();
         assertTrue(updatedPC.size() > initialConstraints);
     }
 
@@ -123,8 +123,8 @@ public class GaletteKnarrIntegrationTest {
         Tag leftTag = Tag.of("left_operand");
         Tag rightTag = Tag.of("right_operand");
 
-        PathUtils.GaletteTaintedLong result = new PathUtils.GaletteTaintedLong();
-        PathUtils.performLongOp(leftTag, 10L, rightTag, 5L, 97, result); // 97 = LADD
+        GalettePathUtils.GaletteTaintedLong result = new GalettePathUtils.GaletteTaintedLong();
+        GalettePathUtils.performLongOp(leftTag, 10L, rightTag, 5L, 97, result); // 97 = LADD
 
         assertNotNull(result.tag);
         assertEquals(15L, result.value); // 10 + 5 = 15

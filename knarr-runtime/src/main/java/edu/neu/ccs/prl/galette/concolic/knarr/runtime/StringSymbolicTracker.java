@@ -88,7 +88,7 @@ public class StringSymbolicTracker {
                 stringExpr = new BinaryOperation(Operator.CONCAT, stringExpr, charExpr);
 
                 // Add concrete constraint: char_value == concrete_char
-                PathUtils.getCurPC()._addDet(Operator.EQ, charExpr, new IntConstant(chars[i]));
+                GalettePathUtils.getCurPC()._addDet(Operator.EQ, charExpr, new IntConstant(chars[i]));
             } else {
                 // Concrete character
                 stringExpr = new BinaryOperation(Operator.CONCAT, stringExpr, new IntConstant(chars[i]));
@@ -279,7 +279,7 @@ public class StringSymbolicTracker {
                 Expression charAtExpr = new BinaryOperation(Operator.CHARAT, strExpr, indexExpr);
                 Expression charExpr = GaletteSymbolicator.getExpressionForTag(charTags[index]);
 
-                PathUtils.getCurPC()
+                GalettePathUtils.getCurPC()
                         ._addDet(
                                 Operator.EQ,
                                 charAtExpr,

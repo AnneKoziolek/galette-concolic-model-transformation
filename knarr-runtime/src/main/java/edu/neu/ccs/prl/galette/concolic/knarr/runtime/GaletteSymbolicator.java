@@ -99,7 +99,7 @@ public class GaletteSymbolicator {
 
         try {
             // Check label validity
-            PathUtils.checkLabelAndInitJPF(label);
+            GalettePathUtils.checkLabelAndInitJPF(label);
 
             // Create Galette tag
             Tag symbolicTag = Tag.of(label);
@@ -133,7 +133,7 @@ public class GaletteSymbolicator {
         }
 
         try {
-            PathUtils.checkLabelAndInitJPF(label);
+            GalettePathUtils.checkLabelAndInitJPF(label);
 
             Tag symbolicTag = Tag.of(label);
 
@@ -166,7 +166,7 @@ public class GaletteSymbolicator {
         }
 
         try {
-            PathUtils.checkLabelAndInitJPF(label);
+            GalettePathUtils.checkLabelAndInitJPF(label);
 
             Tag symbolicTag = Tag.of(label);
 
@@ -201,7 +201,7 @@ public class GaletteSymbolicator {
         }
 
         try {
-            PathUtils.checkLabelAndInitJPF(label);
+            GalettePathUtils.checkLabelAndInitJPF(label);
 
             Tag symbolicTag = Tag.of(label);
 
@@ -247,7 +247,7 @@ public class GaletteSymbolicator {
      */
     public static InputSolution solvePathCondition() {
         try {
-            PathConditionWrapper pc = PathUtils.getCurPC();
+            PathConditionWrapper pc = GalettePathUtils.getCurPC();
             if (pc.isEmpty()) {
                 if (DEBUG) {
                     System.out.println("No path constraints to solve");
@@ -558,7 +558,7 @@ public class GaletteSymbolicator {
         tagToExpression.clear();
         mySoln = null;
         GaletteGreenBridge.clearVariableCache();
-        PathUtils.reset();
+        GalettePathUtils.reset();
 
         if (DEBUG) {
             System.out.println("Reset GaletteSymbolicator state");
@@ -589,7 +589,9 @@ public class GaletteSymbolicator {
         sb.append("GaletteSymbolicator Statistics:\n");
         sb.append("  Symbolic values: ").append(valueToTag.size()).append("\n");
         sb.append("  Green expressions: ").append(tagToExpression.size()).append("\n");
-        sb.append("  Path constraints: ").append(PathUtils.getCurPC().size()).append("\n");
+        sb.append("  Path constraints: ")
+                .append(GalettePathUtils.getCurPC().size())
+                .append("\n");
         sb.append("  Server connected: ")
                 .append(serverConnection != null && !serverConnection.isClosed())
                 .append("\n");

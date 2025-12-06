@@ -53,7 +53,7 @@ public class ComprehensiveTestRunner {
         ArraySymbolicTracker.reset();
         StringSymbolicTracker.reset();
         CoverageTracker.instance.reset();
-        PathUtils.resetPC();
+        GalettePathUtils.resetPC();
 
         // Configure coverage
         CoverageTracker.setCoverageConfig(true, java.util.Optional.empty());
@@ -227,7 +227,7 @@ public class ComprehensiveTestRunner {
         System.out.println(CoverageTracker.instance.getCoverageStatistics());
 
         // Path condition information
-        PathConditionWrapper pc = PathUtils.getCurPC();
+        PathConditionWrapper pc = GalettePathUtils.getCurPC();
         System.out.println();
         System.out.printf("Path Condition: %d constraints collected\n", pc.size());
 

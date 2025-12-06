@@ -5,19 +5,39 @@
 
 set -e  # Exit on any error
 
+# Ensure Java 17 is used for builds and execution
+export JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"
+export PATH="$JAVA_HOME/bin:$PATH"
+
 echo "🚀 Enhanced Galette Knarr Runtime Example"
 echo "=========================================="
+echo "☕ Java Configuration:"
+echo "   JAVA_HOME: $JAVA_HOME"
+echo "   Java version: $(java -version 2>&1 | head -1)"
+echo ""
 
-# TEMPORARY: Force clean rebuild (uncomment to always rebuild)
-FORCE_CLEAN_BUILD=true
+# ============================================================================
+# Build Configuration Constants
+# ============================================================================
+FORCE_CLEAN_BUILD=false        # Force complete clean rebuild (overrides everything)
+FORCE_REBUILD_AGENT=false      # Force rebuild galette-agent JAR only
+FORCE_REBUILD_CLASSES=true    # Force rebuild knarr-runtime Java classes only
+FORCE_REBUILD_JAVA=true        # Force rebuild instrumented Java installation only
 
 # Function to check if compilation and instrumentation is needed
 needs_build() {
-    # TEMPORARY: Force rebuild if flag is set
+    # FORCE_CLEAN_BUILD overrides all other flags
     if [ "$FORCE_CLEAN_BUILD" = "true" ]; then
         echo "🧹 FORCE_CLEAN_BUILD enabled - forcing complete rebuild"
         return 0  # true - needs build
     fi
+    
+    # Check individual force flags
+    if [ "$FORCE_REBUILD_CLASSES" = "true" ]; then
+        echo "🧹 FORCE_REBUILD_CLASSES enabled - rebuilding Java classes"
+        return 0  # true - needs build
+    fi
+    
     local target_dir="target/classes"
     local galette_java="target/galette/java"
     local main_class="$target_dir/edu/neu/ccs/prl/galette/examples/ModelTransformationExample.class"
@@ -52,25 +72,51 @@ needs_build() {
     return 1  # false - no build needed
 }
 
+# Rebuild galette-agent if requested
+if [ "$FORCE_CLEAN_BUILD" = "true" ] || [ "$FORCE_REBUILD_AGENT" = "true" ]; then
+    echo "🔨 Rebuilding galette-agent..."
+    (cd ../galette-agent && mvn clean install -DskipTests -q)
+    if [ $? -ne 0 ]; then
+        echo "❌ Failed to rebuild galette-agent!"
+        exit 1
+    fi
+    echo "✅ galette-agent rebuilt successfully"
+    echo ""
+fi
+
 # Build project with instrumentation if needed
 if needs_build; then
     echo "📦 Building project with Galette instrumentation..."
     
-    # TEMPORARY: Clean rebuild - remove corrupted instrumented Java
-    if [ "$FORCE_CLEAN_BUILD" = "true" ] && [ -d "target/galette/java" ]; then
-        echo "🧹 Removing existing instrumented Java directory (corrupted)"
-        rm -rf target/galette/java
+    # Handle FORCE_CLEAN_BUILD
+    if [ "$FORCE_CLEAN_BUILD" = "true" ]; then
+        echo "🧹 FORCE_CLEAN_BUILD enabled - removing all build artifacts"
+        if [ -d "target/galette/java" ]; then
+            echo "   Removing instrumented Java directory"
+            rm -rf target/galette/java
+        fi
+        echo "🧹 Cleaning Maven target directory..."
+        mvn clean -q
+    elif [ "$FORCE_REBUILD_JAVA" = "true" ]; then
+        # Only rebuild instrumented Java, keep classes
+        echo "🧹 FORCE_REBUILD_JAVA enabled - removing only instrumented Java"
+        if [ -d "target/galette/java" ]; then
+            rm -rf target/galette/java
+        fi
+        # Don't clean Maven, just let the maven plugin recreate the Java installation
+    else
+        # Normal rebuild - clean everything
+        echo "🧹 Cleaning Maven target directory..."
+        mvn clean -q
     fi
     
-    # Clean Maven target to force complete rebuild
-    echo "🧹 Cleaning Maven target directory..."
-    mvn clean -q
+    # Compile classes if needed
+    if [ "$FORCE_CLEAN_BUILD" = "true" ] || [ "$FORCE_REBUILD_CLASSES" = "true" ] || [ ! -f "target/classes/edu/neu/ccs/prl/galette/examples/ModelTransformationExample.class" ]; then
+        echo "🔨 Compiling Java classes..."
+        mvn compile -q
+    fi
     
-    # First compile the Java classes
-    echo "🔨 Compiling Java classes..."
-    mvn compile -q
-    
-    # Then create instrumented Java via Maven plugin
+    # Always create/recreate instrumented Java if we're in the build path
     echo "⚙️ Creating instrumented Java installation..."
     mvn process-test-resources -q
     

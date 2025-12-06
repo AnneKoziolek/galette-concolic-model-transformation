@@ -21,7 +21,7 @@ public class ModelUtils {
              Operation bounds = new BinaryOperation(Operator.AND,
                      new BinaryOperation(Operator.GE, (Expression) cTaint.getSingleLabel(), IntConstant.ICONST_CHAR_0),
                      new BinaryOperation(Operator.LE, (Expression) cTaint.getSingleLabel(), IntConstant.ICONST_CHAR_9));
-             PathUtils.getCurPC()._addDet(ret.val != -1 ? bounds : new UnaryOperation(Operator.NOT, bounds));
+             PhosphorPathUtils.getCurPC()._addDet(ret.val != -1 ? bounds : new UnaryOperation(Operator.NOT, bounds));
 
              ret.taint = cTaint;
          }

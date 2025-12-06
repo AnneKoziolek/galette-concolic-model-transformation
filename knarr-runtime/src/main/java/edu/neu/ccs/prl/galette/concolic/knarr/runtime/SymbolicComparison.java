@@ -113,7 +113,7 @@ public class SymbolicComparison {
                 Expression constraint = new BinaryOperation(operator, leftExpr, rightExpr);
 
                 // Add to current path condition
-                PathConditionWrapper pc = PathUtils.getCurPC();
+                PathConditionWrapper pc = GalettePathUtils.getCurPC();
                 pc.addConstraint(constraint);
 
                 if (GaletteSymbolicator.DEBUG) {
@@ -171,7 +171,7 @@ public class SymbolicComparison {
 
             Expression constraint = new BinaryOperation(Operator.EQ, boolConst, trueConst);
 
-            PathConditionWrapper pc = PathUtils.getCurPC();
+            PathConditionWrapper pc = GalettePathUtils.getCurPC();
             pc.addConstraint(constraint);
 
             if (GaletteSymbolicator.DEBUG) {

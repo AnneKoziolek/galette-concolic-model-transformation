@@ -87,7 +87,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			}
 			Type holder = Type.getType(TaintedFloatWithObjTag.class);
 			mv.visitVarInsn(ALOAD, lvs.getPreAllocedReturnTypeVar(holder));
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, Printer.OPCODES[opcode], "(" + Configuration.TAINT_TAG_DESC + "F" + Configuration.TAINT_TAG_DESC + "F" + holder.getDescriptor() + ")" + holder.getDescriptor(), false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, Printer.OPCODES[opcode], "(" + Configuration.TAINT_TAG_DESC + "F" + Configuration.TAINT_TAG_DESC + "F" + holder.getDescriptor() + ")" + holder.getDescriptor(), false);
 			unwrap(holder, "F", mv);
 			break;
 		case Opcodes.DADD:
@@ -101,7 +101,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			}
 			holder = Type.getType(TaintedDoubleWithObjTag.class);
 			mv.visitVarInsn(ALOAD, lvs.getPreAllocedReturnTypeVar(holder));
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, Printer.OPCODES[opcode], "(" + Configuration.TAINT_TAG_DESC + "D" + Configuration.TAINT_TAG_DESC + "D" + holder.getDescriptor() + ")" + holder.getDescriptor(), false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, Printer.OPCODES[opcode], "(" + Configuration.TAINT_TAG_DESC + "D" + Configuration.TAINT_TAG_DESC + "D" + holder.getDescriptor() + ")" + holder.getDescriptor(), false);
 			unwrap(holder, "D", mv);
 			break;
 		case Opcodes.LSHL:
@@ -113,7 +113,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			}
 			holder = Type.getType(TaintedLongWithObjTag.class);
 			mv.visitVarInsn(ALOAD, lvs.getPreAllocedReturnTypeVar(holder));
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, Printer.OPCODES[opcode], "(" + Configuration.TAINT_TAG_DESC + "J" + Configuration.TAINT_TAG_DESC + "I" + holder.getDescriptor() + ")" + holder.getDescriptor(), false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, Printer.OPCODES[opcode], "(" + Configuration.TAINT_TAG_DESC + "J" + Configuration.TAINT_TAG_DESC + "I" + holder.getDescriptor() + ")" + holder.getDescriptor(), false);
 			unwrap(holder, "J", mv);
 			break;
 		case Opcodes.LSUB:
@@ -130,7 +130,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			}
 			holder = Type.getType(TaintedLongWithObjTag.class);
 			mv.visitVarInsn(ALOAD, lvs.getPreAllocedReturnTypeVar(holder));
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, Printer.OPCODES[opcode], "(" + Configuration.TAINT_TAG_DESC + "J" + Configuration.TAINT_TAG_DESC + "J" + holder.getDescriptor() + ")" + holder.getDescriptor(), false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, Printer.OPCODES[opcode], "(" + Configuration.TAINT_TAG_DESC + "J" + Configuration.TAINT_TAG_DESC + "J" + holder.getDescriptor() + ")" + holder.getDescriptor(), false);
 			unwrap(holder, "J", mv);
 			break;
 		case Opcodes.INEG:
@@ -142,7 +142,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			mv.visitInsn(opcode);
 			mv.visitInsn(SWAP);
 			mv.visitIntInsn(BIPUSH, opcode);
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "registerUnaryOp", "(" + Configuration.TAINT_TAG_DESC + "I)" + Configuration.TAINT_TAG_DESC, false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "registerUnaryOp", "(" + Configuration.TAINT_TAG_DESC + "I)" + Configuration.TAINT_TAG_DESC, false);
 			mv.visitInsn(SWAP);
 			break;
 		case Opcodes.LNEG:
@@ -157,7 +157,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			mv.visitInsn(POP2);
 			// T VV
 			mv.visitIntInsn(BIPUSH, opcode);
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "registerUnaryOp", "(" + Configuration.TAINT_TAG_DESC + "I)" + Configuration.TAINT_TAG_DESC, false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "registerUnaryOp", "(" + Configuration.TAINT_TAG_DESC + "I)" + Configuration.TAINT_TAG_DESC, false);
 			mv.visitInsn(DUP_X2);
 			mv.visitInsn(POP);
 			break;
@@ -168,7 +168,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			}
 			holder = TaintUtils.getContainerReturnType("B");
 			mv.visitVarInsn(ALOAD, lvs.getPreAllocedReturnTypeVar(holder));
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "I2B", "(" + Configuration.TAINT_TAG_DESC + "I" + Type.getDescriptor(TaintedByteWithObjTag.class) + ")" + Type.getDescriptor(TaintedByteWithObjTag.class), false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "I2B", "(" + Configuration.TAINT_TAG_DESC + "I" + Type.getDescriptor(TaintedByteWithObjTag.class) + ")" + Type.getDescriptor(TaintedByteWithObjTag.class), false);
 			unwrap(holder, "B", mv);
 			ta.getAnalyzer().setTopOfStackTagged();
 			break;
@@ -179,7 +179,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			}
 			holder = TaintUtils.getContainerReturnType("C");
 			mv.visitVarInsn(ALOAD, lvs.getPreAllocedReturnTypeVar(holder));
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "I2C", "(" + Configuration.TAINT_TAG_DESC + "I" + Type.getDescriptor(TaintedCharWithObjTag.class) + ")" + Type.getDescriptor(TaintedCharWithObjTag.class), false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "I2C", "(" + Configuration.TAINT_TAG_DESC + "I" + Type.getDescriptor(TaintedCharWithObjTag.class) + ")" + Type.getDescriptor(TaintedCharWithObjTag.class), false);
 			unwrap(holder, "C", mv);
 			ta.getAnalyzer().setTopOfStackTagged();
 			break;
@@ -190,7 +190,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			}
 			holder = TaintUtils.getContainerReturnType("S");
 			mv.visitVarInsn(ALOAD, lvs.getPreAllocedReturnTypeVar(holder));
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "I2S", "(" + Configuration.TAINT_TAG_DESC + "I" + Type.getDescriptor(TaintedShortWithObjTag.class) + ")" + Type.getDescriptor(TaintedShortWithObjTag.class), false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "I2S", "(" + Configuration.TAINT_TAG_DESC + "I" + Type.getDescriptor(TaintedShortWithObjTag.class) + ")" + Type.getDescriptor(TaintedShortWithObjTag.class), false);
 			unwrap(holder, "S", mv);
 			ta.getAnalyzer().setTopOfStackTagged();
 			break;
@@ -201,7 +201,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			}
 			holder = TaintUtils.getContainerReturnType("J");
 			mv.visitVarInsn(ALOAD, lvs.getPreAllocedReturnTypeVar(holder));
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "I2L", "(" + Configuration.TAINT_TAG_DESC + "I" + Type.getDescriptor(TaintedLongWithObjTag.class) + ")" + Type.getDescriptor(TaintedLongWithObjTag.class), false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "I2L", "(" + Configuration.TAINT_TAG_DESC + "I" + Type.getDescriptor(TaintedLongWithObjTag.class) + ")" + Type.getDescriptor(TaintedLongWithObjTag.class), false);
 			unwrap(holder, "J", mv);
 			ta.getAnalyzer().setTopOfStackTagged();
 			break;
@@ -212,7 +212,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			}
 			holder = TaintUtils.getContainerReturnType("F");
 			mv.visitVarInsn(ALOAD, lvs.getPreAllocedReturnTypeVar(holder));
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "I2F", "(" + Configuration.TAINT_TAG_DESC + "I" + Type.getDescriptor(TaintedFloatWithObjTag.class) + ")" + Type.getDescriptor(TaintedFloatWithObjTag.class), false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "I2F", "(" + Configuration.TAINT_TAG_DESC + "I" + Type.getDescriptor(TaintedFloatWithObjTag.class) + ")" + Type.getDescriptor(TaintedFloatWithObjTag.class), false);
 			unwrap(holder, "F", mv);
 			ta.getAnalyzer().setTopOfStackTagged();
 			break;
@@ -223,7 +223,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			}
 			holder = TaintUtils.getContainerReturnType("D");
 			mv.visitVarInsn(ALOAD, lvs.getPreAllocedReturnTypeVar(holder));
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "I2D", "(" + Configuration.TAINT_TAG_DESC + "I" + Type.getDescriptor(TaintedDoubleWithObjTag.class) + ")" + Type.getDescriptor(TaintedDoubleWithObjTag.class), false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "I2D", "(" + Configuration.TAINT_TAG_DESC + "I" + Type.getDescriptor(TaintedDoubleWithObjTag.class) + ")" + Type.getDescriptor(TaintedDoubleWithObjTag.class), false);
 			unwrap(holder, "D", mv);
 			ta.getAnalyzer().setTopOfStackTagged();
 			break;
@@ -234,7 +234,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			}
 			holder = TaintUtils.getContainerReturnType("I");
 			mv.visitVarInsn(ALOAD, lvs.getPreAllocedReturnTypeVar(holder));
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "F2I", "(" + Configuration.TAINT_TAG_DESC + "F" + Type.getDescriptor(TaintedIntWithObjTag.class) + ")" + Type.getDescriptor(TaintedIntWithObjTag.class), false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "F2I", "(" + Configuration.TAINT_TAG_DESC + "F" + Type.getDescriptor(TaintedIntWithObjTag.class) + ")" + Type.getDescriptor(TaintedIntWithObjTag.class), false);
 			unwrap(holder, "I", mv);
 			ta.getAnalyzer().setTopOfStackTagged();
 			break;
@@ -245,7 +245,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			}
 			holder = TaintUtils.getContainerReturnType("J");
 			mv.visitVarInsn(ALOAD, lvs.getPreAllocedReturnTypeVar(holder));
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "F2L", "(" + Configuration.TAINT_TAG_DESC + "F" + Type.getDescriptor(TaintedLongWithObjTag.class) + ")" + Type.getDescriptor(TaintedLongWithObjTag.class), false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "F2L", "(" + Configuration.TAINT_TAG_DESC + "F" + Type.getDescriptor(TaintedLongWithObjTag.class) + ")" + Type.getDescriptor(TaintedLongWithObjTag.class), false);
 			unwrap(holder, "J", mv);
 			ta.getAnalyzer().setTopOfStackTagged();
 			break;
@@ -256,7 +256,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			}
 			holder = TaintUtils.getContainerReturnType("D");
 			mv.visitVarInsn(ALOAD, lvs.getPreAllocedReturnTypeVar(holder));
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "F2D", "(" + Configuration.TAINT_TAG_DESC + "F" + Type.getDescriptor(TaintedDoubleWithObjTag.class) + ")" + Type.getDescriptor(TaintedDoubleWithObjTag.class), false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "F2D", "(" + Configuration.TAINT_TAG_DESC + "F" + Type.getDescriptor(TaintedDoubleWithObjTag.class) + ")" + Type.getDescriptor(TaintedDoubleWithObjTag.class), false);
 			unwrap(holder, "D", mv);
 			ta.getAnalyzer().setTopOfStackTagged();
 			break;
@@ -267,7 +267,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			}
 			holder = TaintUtils.getContainerReturnType("I");
 			mv.visitVarInsn(ALOAD, lvs.getPreAllocedReturnTypeVar(holder));
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "L2I", "(" + Configuration.TAINT_TAG_DESC + "J" + Type.getDescriptor(TaintedIntWithObjTag.class) + ")" + Type.getDescriptor(TaintedIntWithObjTag.class), false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "L2I", "(" + Configuration.TAINT_TAG_DESC + "J" + Type.getDescriptor(TaintedIntWithObjTag.class) + ")" + Type.getDescriptor(TaintedIntWithObjTag.class), false);
 			unwrap(holder, "I", mv);
 			ta.getAnalyzer().setTopOfStackTagged();
 			break;
@@ -278,7 +278,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			}
 			holder = TaintUtils.getContainerReturnType("F");
 			mv.visitVarInsn(ALOAD, lvs.getPreAllocedReturnTypeVar(holder));
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "L2F", "(" + Configuration.TAINT_TAG_DESC + "J" + Type.getDescriptor(TaintedFloatWithObjTag.class) + ")" + Type.getDescriptor(TaintedFloatWithObjTag.class), false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "L2F", "(" + Configuration.TAINT_TAG_DESC + "J" + Type.getDescriptor(TaintedFloatWithObjTag.class) + ")" + Type.getDescriptor(TaintedFloatWithObjTag.class), false);
 			unwrap(holder, "F", mv);
 			ta.getAnalyzer().setTopOfStackTagged();
 			break;
@@ -289,7 +289,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			}
 			holder = TaintUtils.getContainerReturnType("D");
 			mv.visitVarInsn(ALOAD, lvs.getPreAllocedReturnTypeVar(holder));
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "L2D", "(" + Configuration.TAINT_TAG_DESC + "J" + Type.getDescriptor(TaintedDoubleWithObjTag.class) + ")" + Type.getDescriptor(TaintedDoubleWithObjTag.class), false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "L2D", "(" + Configuration.TAINT_TAG_DESC + "J" + Type.getDescriptor(TaintedDoubleWithObjTag.class) + ")" + Type.getDescriptor(TaintedDoubleWithObjTag.class), false);
 			unwrap(holder, "D", mv);
 			ta.getAnalyzer().setTopOfStackTagged();
 			break;
@@ -300,7 +300,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			}
 			holder = TaintUtils.getContainerReturnType("I");
 			mv.visitVarInsn(ALOAD, lvs.getPreAllocedReturnTypeVar(holder));
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "D2I", "(" + Configuration.TAINT_TAG_DESC + "D" + Type.getDescriptor(TaintedIntWithObjTag.class) + ")" + Type.getDescriptor(TaintedIntWithObjTag.class), false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "D2I", "(" + Configuration.TAINT_TAG_DESC + "D" + Type.getDescriptor(TaintedIntWithObjTag.class) + ")" + Type.getDescriptor(TaintedIntWithObjTag.class), false);
 			unwrap(holder, "I", mv);
 			ta.getAnalyzer().setTopOfStackTagged();
 			break;
@@ -311,7 +311,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			}
 			holder = TaintUtils.getContainerReturnType("F");
 			mv.visitVarInsn(ALOAD, lvs.getPreAllocedReturnTypeVar(holder));
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "D2F", "(" + Configuration.TAINT_TAG_DESC + "D" + Type.getDescriptor(TaintedFloatWithObjTag.class) + ")" + Type.getDescriptor(TaintedFloatWithObjTag.class), false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "D2F", "(" + Configuration.TAINT_TAG_DESC + "D" + Type.getDescriptor(TaintedFloatWithObjTag.class) + ")" + Type.getDescriptor(TaintedFloatWithObjTag.class), false);
 			unwrap(holder, "F", mv);
 			ta.getAnalyzer().setTopOfStackTagged();
 			break;
@@ -322,7 +322,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			}
 			holder = TaintUtils.getContainerReturnType("J");
 			mv.visitVarInsn(ALOAD, lvs.getPreAllocedReturnTypeVar(holder));
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "D2L", "(" + Configuration.TAINT_TAG_DESC + "D" + Type.getDescriptor(TaintedLongWithObjTag.class) + ")" + Type.getDescriptor(TaintedLongWithObjTag.class), false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "D2L", "(" + Configuration.TAINT_TAG_DESC + "D" + Type.getDescriptor(TaintedLongWithObjTag.class) + ")" + Type.getDescriptor(TaintedLongWithObjTag.class), false);
 			unwrap(holder, "J", mv);
 			ta.getAnalyzer().setTopOfStackTagged();
 			break;
@@ -332,7 +332,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 				break;
 			}
 			mv.visitVarInsn(ALOAD, lvs.getPreAllocedReturnTypeVar(Type.getType(TaintedIntWithObjTag.class)));
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "LCMP", "(" + Configuration.TAINT_TAG_DESC + "J" + Configuration.TAINT_TAG_DESC + "J" + Type.getDescriptor(TaintedIntWithObjTag.class) + ")" + Type.getDescriptor(TaintedIntWithObjTag.class), false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "LCMP", "(" + Configuration.TAINT_TAG_DESC + "J" + Configuration.TAINT_TAG_DESC + "J" + Type.getDescriptor(TaintedIntWithObjTag.class) + ")" + Type.getDescriptor(TaintedIntWithObjTag.class), false);
 			ta.unwrapTaintedInt();
 			break;
 		case Opcodes.DCMPL:
@@ -342,7 +342,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 				break;
 			}
 			mv.visitVarInsn(ALOAD, lvs.getPreAllocedReturnTypeVar(Type.getType(TaintedIntWithObjTag.class)));
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, Printer.OPCODES[opcode], "(" + Configuration.TAINT_TAG_DESC + "D" + Configuration.TAINT_TAG_DESC + "D" + Type.getDescriptor(TaintedIntWithObjTag.class) + ")" + Type.getDescriptor(TaintedIntWithObjTag.class), false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, Printer.OPCODES[opcode], "(" + Configuration.TAINT_TAG_DESC + "D" + Configuration.TAINT_TAG_DESC + "D" + Type.getDescriptor(TaintedIntWithObjTag.class) + ")" + Type.getDescriptor(TaintedIntWithObjTag.class), false);
 			ta.unwrapTaintedInt();
 			break;
 		case Opcodes.FCMPG:
@@ -352,7 +352,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 				break;
 			}
 			mv.visitVarInsn(ALOAD, lvs.getPreAllocedReturnTypeVar(Type.getType(TaintedIntWithObjTag.class)));
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, Printer.OPCODES[opcode], "(" + Configuration.TAINT_TAG_DESC + "F" + Configuration.TAINT_TAG_DESC + "F" + Type.getDescriptor(TaintedIntWithObjTag.class) + ")" + Type.getDescriptor(TaintedIntWithObjTag.class), false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, Printer.OPCODES[opcode], "(" + Configuration.TAINT_TAG_DESC + "F" + Configuration.TAINT_TAG_DESC + "F" + Type.getDescriptor(TaintedIntWithObjTag.class) + ")" + Type.getDescriptor(TaintedIntWithObjTag.class), false);
 			ta.unwrapTaintedInt();
 			break;
 		case Opcodes.ARRAYLENGTH:
@@ -411,7 +411,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			}
 			holder = TaintUtils.getContainerReturnType("I");
 			mv.visitVarInsn(ALOAD, lvs.getPreAllocedReturnTypeVar(holder));
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, Printer.OPCODES[opcode], "(" + Configuration.TAINT_TAG_DESC + "I" + Configuration.TAINT_TAG_DESC + "I" + holder.getDescriptor() + ")" + holder.getDescriptor(), false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, Printer.OPCODES[opcode], "(" + Configuration.TAINT_TAG_DESC + "I" + Configuration.TAINT_TAG_DESC + "I" + holder.getDescriptor() + ")" + holder.getDescriptor(), false);
 			unwrap(holder, "I", mv);
 			break;
 		case RETURN:
@@ -545,7 +545,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			mv.visitLdcInsn(loop);
 			mv.visitInsn(ICONST_0);
 			getSourceInfo(mv);
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "addConstraint", "(" + Configuration.TAINT_TAG_DESC + "IIIZZ" + STRING_TYPE.getDescriptor() + ")V", false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "addConstraint", "(" + Configuration.TAINT_TAG_DESC + "IIIZZ" + STRING_TYPE.getDescriptor() + ")V", false);
 			FrameNode fn3 = ta.getCurrentFrameNode();
 
 			mv.visitJumpInsn(GOTO, originalEnd);
@@ -559,7 +559,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			mv.visitLdcInsn(loop);
 			mv.visitInsn(ICONST_1);
 			getSourceInfo(mv);
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "addConstraint", "(" + Configuration.TAINT_TAG_DESC + "IIIZZ" + STRING_TYPE.getDescriptor() + ")V", false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "addConstraint", "(" + Configuration.TAINT_TAG_DESC + "IIIZZ" + STRING_TYPE.getDescriptor() + ")V", false);
 			mv.visitJumpInsn(GOTO, label);
 			mv.visitLabel(untainted);
 			// need frame
@@ -601,7 +601,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			mv.visitLdcInsn(loop);
 			mv.visitInsn(ICONST_1);
 			getSourceInfo(mv);
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "addConstraint", "(" + Configuration.TAINT_TAG_DESC + Configuration.TAINT_TAG_DESC + "IIIIIZZ" + STRING_TYPE.getDescriptor() + ")V", false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "addConstraint", "(" + Configuration.TAINT_TAG_DESC + Configuration.TAINT_TAG_DESC + "IIIIIZZ" + STRING_TYPE.getDescriptor() + ")V", false);
 			mv.visitJumpInsn(GOTO, label);
 			mv.visitLabel(isFalse);
 			ta.acceptFn(fn);
@@ -613,7 +613,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			mv.visitLdcInsn(loop);
 			mv.visitInsn(ICONST_0);
 			getSourceInfo(mv);
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "addConstraint", "(" + Configuration.TAINT_TAG_DESC + Configuration.TAINT_TAG_DESC + "IIIIIZZ" + STRING_TYPE.getDescriptor() + ")V", false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "addConstraint", "(" + Configuration.TAINT_TAG_DESC + Configuration.TAINT_TAG_DESC + "IIIIIZZ" + STRING_TYPE.getDescriptor() + ")V", false);
 
 			lvs.freeTmpLV(tmp);
 			break;
@@ -700,7 +700,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 		// Object[] stack = removeLongsDoubleTopVal(analyzer.stack);
 		// //Jump will be taken
 		// mv.visitIntInsn(BIPUSH, opcode);
-		// mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME,
+		// mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME,
 		// "addConstraint", "(" + Configuration.TAINT_TAG_DESC +
 		// Configuration.TAINT_TAG_DESC
 		// + "Ljava/lang/Object;Ljava/lang/Object;I)V", false);
@@ -710,7 +710,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 		// stack);
 		//
 		// mv.visitIntInsn(BIPUSH, invertOpcode(opcode));
-		// mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME,
+		// mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME,
 		// "addConstraint", "(" + Configuration.TAINT_TAG_DESC +
 		// Configuration.TAINT_TAG_DESC
 		// + "Ljava/lang/Object;Ljava/lang/Object;I)V", false);
@@ -738,7 +738,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 		// // Object[] stack = removeLongsDoubleTopVal(analyzer.stack);
 		// // //Jump will be taken
 		// // mv.visitIntInsn(BIPUSH, opcode);
-		// // mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME,
+		// // mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME,
 		// "addConstraint", "(" + Configuration.TAINT_TAG_DESC +
 		// Configuration.TAINT_TAG_DESC
 		// // + "Ljava/lang/Object;Ljava/lang/Object;I)V", false);
@@ -749,7 +749,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 		// //
 		// // //jump will not be taken
 		// // mv.visitIntInsn(BIPUSH, invertOpcode(opcode));
-		// // mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME,
+		// // mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME,
 		// "addConstraint", "(" + Configuration.TAINT_TAG_DESC +
 		// Configuration.TAINT_TAG_DESC
 		// // + "Ljava/lang/Object;Ljava/lang/Object;I)V", false);
@@ -816,7 +816,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 
 		mv.visitVarInsn(ALOAD, shadowVar);
 		mv.visitLdcInsn(increment);
-		mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "addIincConstraint", "(" + Configuration.TAINT_TAG_DESC + "I)V", false);
+		mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "addIincConstraint", "(" + Configuration.TAINT_TAG_DESC + "I)V", false);
 	}
 
 	@Override
@@ -936,7 +936,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			mv.visitVarInsn(ALOAD, lvWithKeys);
 			mv.visitLdcInsn(switchID);
 			getSourceInfo(mv);
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "addSwitchConstraint", "(" + Configuration.TAINT_TAG_DESC + "III[II" + STRING_TYPE.getDescriptor() + ")V", false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "addSwitchConstraint", "(" + Configuration.TAINT_TAG_DESC + "III[II" + STRING_TYPE.getDescriptor() + ")V", false);
 			mv.visitJumpInsn(GOTO, labels[i]);
 		}
 
@@ -953,7 +953,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 		lvs.freeTmpLV(lvWithKeys);
 		mv.visitLdcInsn(switchID);
 		getSourceInfo(mv);
-		mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "addSwitchConstraint", "(" + Configuration.TAINT_TAG_DESC + "III[II" + STRING_TYPE.getDescriptor() + ")V", false);
+		mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "addSwitchConstraint", "(" + Configuration.TAINT_TAG_DESC + "III[II" + STRING_TYPE.getDescriptor() + ")V", false);
 		mv.visitJumpInsn(GOTO, dflt);
 	}
 
@@ -1007,7 +1007,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 			// taint, value, tablet arget, arm, array of values, switch ID
 			getSourceInfo(mv);
 			// taint, value, tablet arget, arm, array of values, switch ID, string descriptor
-			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "addSwitchConstraint", "(" + Configuration.TAINT_TAG_DESC + "III[II" + STRING_TYPE.getDescriptor() + ")V", false);
+			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "addSwitchConstraint", "(" + Configuration.TAINT_TAG_DESC + "III[II" + STRING_TYPE.getDescriptor() + ")V", false);
 			mv.visitJumpInsn(GOTO, labels[i]);
 		}
 
@@ -1024,7 +1024,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 		lvs.freeTmpLV(lvWithKeys);
 		mv.visitLdcInsn(switchID);
 		getSourceInfo(mv);
-		mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "addSwitchConstraint", "(" + Configuration.TAINT_TAG_DESC + "III[II" + STRING_TYPE.getDescriptor() + ")V", false);
+		mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "addSwitchConstraint", "(" + Configuration.TAINT_TAG_DESC + "III[II" + STRING_TYPE.getDescriptor() + ")V", false);
 		mv.visitJumpInsn(GOTO, dflt);
 
 
@@ -1090,7 +1090,7 @@ public class PathConstraintTagFactory implements TaintTagFactory, Opcodes, Strin
 	private void registerSingleStringOp(MethodVisitor mv, int op) {
 		mv.visitVarInsn(ALOAD, 0);
 		mv.visitIntInsn(SIPUSH, op);
-		mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "registerStringOp", "(" + Configuration.TAINT_TAG_DESC + Type.getType(String.class).getDescriptor() + "I)" + Configuration.TAINT_TAG_DESC, false);
+		mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "registerStringOp", "(" + Configuration.TAINT_TAG_DESC + Type.getType(String.class).getDescriptor() + "I)" + Configuration.TAINT_TAG_DESC, false);
 	}
 
 	private void getTaintField(MethodVisitor mv) {

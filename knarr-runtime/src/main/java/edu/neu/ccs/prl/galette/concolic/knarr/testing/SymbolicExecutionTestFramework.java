@@ -185,7 +185,7 @@ public class SymbolicExecutionTestFramework {
         // Test bounds checking
         framework.addTest("array_bounds_check", "Array bounds constraint generation", () -> {
             ArraySymbolicTracker tracker = new ArraySymbolicTracker();
-            PathUtils.resetPC();
+            GalettePathUtils.resetPC();
 
             int[] array = {1, 2, 3};
             Tag indexTag = Tag.of("bounds_index");
@@ -194,7 +194,7 @@ public class SymbolicExecutionTestFramework {
             tracker.handleArrayRead(array, indexTag, 1, arrayTags, array[1]);
 
             // Check that path condition has constraints
-            PathConditionWrapper pc = PathUtils.getCurPC();
+            PathConditionWrapper pc = GalettePathUtils.getCurPC();
             return pc.size() > 0; // Should have bounds constraints
         });
 
@@ -410,7 +410,7 @@ public class SymbolicExecutionTestFramework {
 
         // Test constraint generation
         framework.addTest("integration_constraints", "Constraint generation integration", () -> {
-            PathUtils.resetPC();
+            GalettePathUtils.resetPC();
             ArraySymbolicTracker arrayTracker = new ArraySymbolicTracker();
 
             int[] array = {1, 2, 3, 4, 5};
@@ -419,7 +419,7 @@ public class SymbolicExecutionTestFramework {
 
             arrayTracker.handleArrayRead(array, indexTag, 2, arrayTags, array[2]);
 
-            PathConditionWrapper pc = PathUtils.getCurPC();
+            PathConditionWrapper pc = GalettePathUtils.getCurPC();
             return pc.size() >= 2; // Should have bounds constraints
         });
 

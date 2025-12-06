@@ -1,8 +1,8 @@
 package edu.neu.ccs.prl.galette.examples;
 
+import edu.neu.ccs.prl.galette.concolic.knarr.runtime.GalettePathUtils;
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.GaletteSymbolicator;
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.PathConditionWrapper;
-import edu.neu.ccs.prl.galette.concolic.knarr.runtime.PathUtils;
 import edu.neu.ccs.prl.galette.internal.runtime.Tag;
 
 /**
@@ -69,7 +69,7 @@ public class ArraySymbolicSimpleExample {
         System.out.println("- array_result == 30 (concrete value constraint)");
 
         // Show path condition state
-        PathConditionWrapper pc = PathUtils.getCurPC();
+        PathConditionWrapper pc = GalettePathUtils.getCurPC();
         System.out.println();
         System.out.println("Current path condition size: " + pc.size());
 

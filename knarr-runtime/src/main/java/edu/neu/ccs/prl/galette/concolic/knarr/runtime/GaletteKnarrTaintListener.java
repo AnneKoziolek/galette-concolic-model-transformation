@@ -94,7 +94,7 @@ public class GaletteKnarrTaintListener implements ConcolicTaintListener {
                 }
 
                 // Add constraint to current path condition
-                PathUtils.getCurPC().addConstraint(constraint);
+                GalettePathUtils.getCurPC().addConstraint(constraint);
 
                 // Update control stack
                 ConcolicControlStack.pushControl(condition);
@@ -122,7 +122,7 @@ public class GaletteKnarrTaintListener implements ConcolicTaintListener {
                     Expression addExpr = GaletteGreenBridge.createBinaryOp(left, Operator.ADD, right);
                     Expression constraint = GaletteGreenBridge.createBinaryOp(resultExpr, Operator.EQ, addExpr);
 
-                    PathUtils.getCurPC().addConstraint(constraint);
+                    GalettePathUtils.getCurPC().addConstraint(constraint);
                 }
             }
         } catch (Exception e) {
@@ -152,7 +152,7 @@ public class GaletteKnarrTaintListener implements ConcolicTaintListener {
                         constraint = GaletteGreenBridge.createUnaryOp(Operator.NOT, constraint);
                     }
 
-                    PathUtils.getCurPC().addConstraint(constraint);
+                    GalettePathUtils.getCurPC().addConstraint(constraint);
                 }
             }
         } catch (Exception e) {
@@ -163,7 +163,7 @@ public class GaletteKnarrTaintListener implements ConcolicTaintListener {
     @Override
     public void onPathConstraint(Object constraint) {
         if (constraint instanceof Expression) {
-            PathUtils.getCurPC().addConstraint((Expression) constraint);
+            GalettePathUtils.getCurPC().addConstraint((Expression) constraint);
         } else {
             System.err.println("Unknown constraint type: " + (constraint != null ? constraint.getClass() : "null"));
         }
@@ -185,7 +185,7 @@ public class GaletteKnarrTaintListener implements ConcolicTaintListener {
                     if (argExpr != null) {
                         // Create constraint relating argument to method behavior
                         // This is a placeholder - real implementation would be method-specific
-                        PathUtils.getCurPC().addConstraint(argExpr);
+                        GalettePathUtils.getCurPC().addConstraint(argExpr);
                     }
                 }
             }
@@ -202,7 +202,7 @@ public class GaletteKnarrTaintListener implements ConcolicTaintListener {
                 if (arrayExpr != null && indexExpr != null) {
                     // Create array access constraint
                     // For now, just add the index constraint
-                    PathUtils.getCurPC().addConstraint(indexExpr);
+                    GalettePathUtils.getCurPC().addConstraint(indexExpr);
                 }
             }
         } catch (Exception e) {
@@ -315,7 +315,7 @@ public class GaletteKnarrTaintListener implements ConcolicTaintListener {
     public static void reset() {
         arrayNames.clear();
         symbolizedArrays.clear();
-        PathUtils.reset();
+        GalettePathUtils.reset();
         ConcolicControlStack.clearControl();
     }
 
@@ -329,7 +329,9 @@ public class GaletteKnarrTaintListener implements ConcolicTaintListener {
         sb.append("GaletteKnarrTaintListener Statistics:\n");
         sb.append("  Tracked arrays: ").append(arrayNames.size()).append("\n");
         sb.append("  Symbolized arrays: ").append(symbolizedArrays.size()).append("\n");
-        sb.append("  Path constraints: ").append(PathUtils.getCurPC().size()).append("\n");
+        sb.append("  Path constraints: ")
+                .append(GalettePathUtils.getCurPC().size())
+                .append("\n");
         sb.append("  Control depth: ")
                 .append(ConcolicControlStack.getControlDepth())
                 .append("\n");

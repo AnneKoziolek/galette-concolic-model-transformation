@@ -12,12 +12,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class PathUtils {
+public class PhosphorPathUtils {
 	private static IntConstant O000FFFF;
 	public static BVConstant BV0_32;
 	private static PathConditionWrapper curPC;
 	public static final boolean IGNORE_SHIFTS = true;
-	public static final String INTERNAL_NAME = "edu/gmu/swe/knarr/runtime/PathUtils";
+	public static final String INTERNAL_NAME = "edu/gmu/swe/knarr/runtime/PhosphorPathUtils";
 
 //	public static String interesting = ".*autoVar_4[^0-9].*";
 

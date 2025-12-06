@@ -1,8 +1,8 @@
 package edu.neu.ccs.prl.galette.examples.transformation;
 
+import edu.neu.ccs.prl.galette.concolic.knarr.runtime.GalettePathUtils;
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.GaletteSymbolicator;
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.PathConditionWrapper;
-import edu.neu.ccs.prl.galette.concolic.knarr.runtime.PathUtils;
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.SymbolicComparison;
 import edu.neu.ccs.prl.galette.examples.models.source.BrakeDiscSource;
 import edu.neu.ccs.prl.galette.examples.models.target.BrakeDiscTarget;
@@ -217,7 +217,7 @@ public class SymbolicExecutionWrapper {
         StringBuilder analysis = new StringBuilder();
 
         try {
-            PathConditionWrapper pc = PathUtils.getCurPC();
+            PathConditionWrapper pc = GalettePathUtils.getCurPC();
 
             if (pc != null && !pc.isEmpty()) {
                 analysis.append("=== Symbolic Execution Analysis ===\n");
@@ -272,7 +272,7 @@ public class SymbolicExecutionWrapper {
      * Get summary statistics about the current symbolic execution state.
      */
     public static String getExecutionSummary() {
-        PathConditionWrapper pc = PathUtils.getCurPC();
+        PathConditionWrapper pc = GalettePathUtils.getCurPC();
         int constraintCount = (pc != null) ? pc.size() : 0;
 
         return String.format(
@@ -284,7 +284,7 @@ public class SymbolicExecutionWrapper {
      * Check if symbolic execution is currently active.
      */
     public static boolean isSymbolicExecutionActive() {
-        PathConditionWrapper pc = PathUtils.getCurPC();
+        PathConditionWrapper pc = GalettePathUtils.getCurPC();
         return pc != null && !pc.isEmpty();
     }
 
@@ -379,7 +379,7 @@ public class SymbolicExecutionWrapper {
         System.out.println("Analyzing discovered conditional logic...");
 
         // Extract thresholds dynamically from collected path constraints
-        PathConditionWrapper pc = PathUtils.getCurPC();
+        PathConditionWrapper pc = GalettePathUtils.getCurPC();
         if (pc != null && !pc.isEmpty()) {
             System.out.println("Path constraints collected:");
             List<Expression> constraints = pc.getConstraints();
@@ -570,7 +570,7 @@ public class SymbolicExecutionWrapper {
         System.out.println("\n=== Path Constraint Analysis ===");
 
         try {
-            PathConditionWrapper pc = PathUtils.getCurPC();
+            PathConditionWrapper pc = GalettePathUtils.getCurPC();
 
             if (pc != null && !pc.isEmpty()) {
                 System.out.println("Path constraints collected: " + pc.size());

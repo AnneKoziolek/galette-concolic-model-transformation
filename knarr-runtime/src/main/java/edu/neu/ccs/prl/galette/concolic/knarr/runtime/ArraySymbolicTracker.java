@@ -58,7 +58,7 @@ public class ArraySymbolicTracker {
             for (int i = 0; i < Array.getLength(arr); i++) {
                 Operation select = new BinaryOperation(Operator.SELECT, arrVar, new BVConstant(i, 32));
                 Constant val = createConstantFromArrayElement(arr, i);
-                PathUtils.getCurPC()._addDet(Operator.EQ, select, val);
+                GalettePathUtils.getCurPC()._addDet(Operator.EQ, select, val);
             }
         }
 
@@ -131,7 +131,7 @@ public class ArraySymbolicTracker {
 
             // Generate store constraint: newArray = store(oldArray, index, value)
             Operation store = new NaryOperation(Operator.STORE, oldVar, idx, val);
-            PathUtils.getCurPC()._addDet(Operator.EQ, store, newVar);
+            GalettePathUtils.getCurPC()._addDet(Operator.EQ, store, newVar);
             return newVar;
         }
     }
@@ -201,7 +201,7 @@ public class ArraySymbolicTracker {
 
             // Add constraint: concrete_value == array[symbolic_index]
             Constant concreteConst = createConstantFromValue(concreteValue);
-            PathUtils.getCurPC()._addDet(Operator.EQ, concreteConst, select);
+            GalettePathUtils.getCurPC()._addDet(Operator.EQ, concreteConst, select);
 
             // Add bounds constraints for symbolic index
             addBoundsConstraints(indexTag, Array.getLength(arr));
@@ -221,7 +221,7 @@ public class ArraySymbolicTracker {
 
             // Connect array element tag to symbolic read
             Expression arrayElementExpr = GaletteGreenBridge.tagToGreenExpression(arrayTags[index]);
-            PathUtils.getCurPC()._addDet(Operator.EQ, arrayElementExpr, select);
+            GalettePathUtils.getCurPC()._addDet(Operator.EQ, arrayElementExpr, select);
 
             // Add bounds constraints
             addBoundsConstraints(indexTag, Array.getLength(arr));
@@ -320,10 +320,10 @@ public class ArraySymbolicTracker {
         Expression indexExpr = GaletteGreenBridge.tagToGreenExpression(indexTag);
 
         // index >= 0
-        PathUtils.getCurPC()._addDet(Operator.GE, indexExpr, new BVConstant(0, 32));
+        GalettePathUtils.getCurPC()._addDet(Operator.GE, indexExpr, new BVConstant(0, 32));
 
         // index < array.length
-        PathUtils.getCurPC()._addDet(Operator.LT, indexExpr, new BVConstant(arrayLength, 32));
+        GalettePathUtils.getCurPC()._addDet(Operator.LT, indexExpr, new BVConstant(arrayLength, 32));
     }
 
     /**

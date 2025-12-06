@@ -415,7 +415,7 @@ public class StringUtils {
 			}
 
 			Expression pos = (Expression) s.valuePHOSPHOR_TAG.taints[index].getSingleLabel();
-			PathUtils.getCurPC()._addDet(
+			PhosphorPathUtils.getCurPC()._addDet(
 					Operator.EQ,
 					new BinaryOperation(Operator.CHARAT, tS, eIndex),
 					new BinaryOperation(Operator.CONCAT, new StringConstant(""), pos));

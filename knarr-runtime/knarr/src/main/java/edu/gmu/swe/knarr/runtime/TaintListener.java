@@ -88,7 +88,7 @@ public class TaintListener extends DerivedTaintListener {
 					default:
 						throw new Error("Not supported");
 				}
-				PathUtils.getCurPC()._addDet(Operator.EQ, select, val);
+				PhosphorPathUtils.getCurPC()._addDet(Operator.EQ, select, val);
 			}
 		}
 
@@ -119,7 +119,7 @@ public class TaintListener extends DerivedTaintListener {
 			ret.addLast(var);
 
 			Operation store = new NaryOperation(Operator.STORE, oldVar, idx, val);
-			PathUtils.getCurPC()._addDet(Operator.EQ, store, newVar);
+			PhosphorPathUtils.getCurPC()._addDet(Operator.EQ, store, newVar);
 			return newVar;
 		}
 	}
@@ -166,13 +166,13 @@ public class TaintListener extends DerivedTaintListener {
 			Taint ret = new ExpressionTaint(select);
 			b.taints[idx] = ret;
 
-			PathUtils.getCurPC()._addDet(Operator.EQ, c, select);
+			PhosphorPathUtils.getCurPC()._addDet(Operator.EQ, c, select);
 
 			// Index is within the array bounds
 			{
 				Expression exp = new BinaryOperation(Operator.LT, (Expression) idxTaint.getSingleLabel(), new BVConstant(b.getLength(), 32));
-				PathUtils.getCurPC()._addDet(Operator.LT, (Expression) idxTaint.getSingleLabel(), new BVConstant(b.getLength(), 32));
-				PathUtils.getCurPC()._addDet(Operator.GE, (Expression) idxTaint.getSingleLabel(), PathUtils.BV0_32);
+				PhosphorPathUtils.getCurPC()._addDet(Operator.LT, (Expression) idxTaint.getSingleLabel(), new BVConstant(b.getLength(), 32));
+				PhosphorPathUtils.getCurPC()._addDet(Operator.GE, (Expression) idxTaint.getSingleLabel(), PhosphorPathUtils.BV0_32);
 			}
 
 			symbolizedArrays.add(b.taints);
@@ -188,11 +188,11 @@ public class TaintListener extends DerivedTaintListener {
 			// Return array symb OR return symbolic array read
 			Expression var = getArrayVar(b.getVal());
 			Operation select = new BinaryOperation(Operator.SELECT, var, (Expression) idxTaint.getSingleLabel());
-			PathUtils.getCurPC()._addDet(Operator.EQ, (Expression) b.taints[idx].getSingleLabel(), select);
+			PhosphorPathUtils.getCurPC()._addDet(Operator.EQ, (Expression) b.taints[idx].getSingleLabel(), select);
 
 			// Index is within the array bounds
-			PathUtils.getCurPC()._addDet(Operator.LT, (Expression)idxTaint.getSingleLabel(), new BVConstant(b.getLength(), 32));
-			PathUtils.getCurPC()._addDet(Operator.GE, (Expression)idxTaint.getSingleLabel(), PathUtils.BV0_32);
+			PhosphorPathUtils.getCurPC()._addDet(Operator.LT, (Expression)idxTaint.getSingleLabel(), new BVConstant(b.getLength(), 32));
+			PhosphorPathUtils.getCurPC()._addDet(Operator.GE, (Expression)idxTaint.getSingleLabel(), PhosphorPathUtils.BV0_32);
 
 			return b.taints[idx];
 		} else if (!taintedArray && !taintedIndex) {
@@ -206,11 +206,11 @@ public class TaintListener extends DerivedTaintListener {
 //			BVConstant idxBV = new BVConstant(idx, 32);
 //
 //			Operation select = new BinaryOperation(Operator.SELECT, var, (Expression) idxTaint.getSingleLabel());
-//			PathUtils.getCurPC()._addDet(Operator.EQ, c, select);
+//			PhosphorPathUtils.getCurPC()._addDet(Operator.EQ, c, select);
 //
 //			// Index is within the array bounds
-//			PathUtils.getCurPC()._addDet(Operator.LT, (Expression)idxTaint.getSingleLabel(), new BVConstant(b.getLength(), 32));
-//			PathUtils.getCurPC()._addDet(Operator.GE, (Expression)idxTaint.getSingleLabel(), new BVConstant(0, 32));
+//			PhosphorPathUtils.getCurPC()._addDet(Operator.LT, (Expression)idxTaint.getSingleLabel(), new BVConstant(b.getLength(), 32));
+//			PhosphorPathUtils.getCurPC()._addDet(Operator.GE, (Expression)idxTaint.getSingleLabel(), new BVConstant(0, 32));
 //			Taint ret = new ExpressionTaint(select);
 //
 //			if (b.taints == null)
@@ -258,8 +258,8 @@ public class TaintListener extends DerivedTaintListener {
 			Expression newArray = setArrayVar(b.getVal(), (Expression)idxTaint.getSingleLabel(), c);
 
 			// Index is within the array bounds
-			PathUtils.getCurPC()._addDet(Operator.LT, (Expression)idxTaint.getSingleLabel(), new BVConstant(b.getLength(), 32));
-			PathUtils.getCurPC()._addDet(Operator.GE, (Expression)idxTaint.getSingleLabel(), new BVConstant(0, 32));
+			PhosphorPathUtils.getCurPC()._addDet(Operator.LT, (Expression)idxTaint.getSingleLabel(), new BVConstant(b.getLength(), 32));
+			PhosphorPathUtils.getCurPC()._addDet(Operator.GE, (Expression)idxTaint.getSingleLabel(), new BVConstant(0, 32));
 
 			// Array position becomes new value
 //			return new ExpressionTaint(c);
@@ -273,8 +273,8 @@ public class TaintListener extends DerivedTaintListener {
 			// Make array pos symbolic with new val
 
 			// Index is within the array bounds
-			PathUtils.getCurPC()._addDet(Operator.LT, (Expression)idxTaint.getSingleLabel(), new BVConstant(b.getLength(), 32));
-			PathUtils.getCurPC()._addDet(Operator.GE, (Expression)idxTaint.getSingleLabel(), new BVConstant(0, 32));
+			PhosphorPathUtils.getCurPC()._addDet(Operator.LT, (Expression)idxTaint.getSingleLabel(), new BVConstant(b.getLength(), 32));
+			PhosphorPathUtils.getCurPC()._addDet(Operator.GE, (Expression)idxTaint.getSingleLabel(), new BVConstant(0, 32));
 
 			return t;
 		} else if(taintedArray && !taintedIndex && taintedVal) {
@@ -292,8 +292,8 @@ public class TaintListener extends DerivedTaintListener {
 			Expression newArray = setArrayVar(b.getVal(), (Expression)idxTaint.getSingleLabel(), c);
 
 			// Index is within the array bounds
-			PathUtils.getCurPC()._addDet(Operator.LT, (Expression)idxTaint.getSingleLabel(), new BVConstant(b.getLength(), 32));
-			PathUtils.getCurPC()._addDet(Operator.GE, (Expression)idxTaint.getSingleLabel(), new BVConstant(0, 32));
+			PhosphorPathUtils.getCurPC()._addDet(Operator.LT, (Expression)idxTaint.getSingleLabel(), new BVConstant(b.getLength(), 32));
+			PhosphorPathUtils.getCurPC()._addDet(Operator.GE, (Expression)idxTaint.getSingleLabel(), new BVConstant(0, 32));
 
 //			return new ExpressionTaint(c);
 			return null;
@@ -304,8 +304,8 @@ public class TaintListener extends DerivedTaintListener {
 			Expression newArray = setArrayVar(b.getVal(), (Expression)idxTaint.getSingleLabel(), (Expression) t.getSingleLabel());
 
 			// Index is within the array bounds
-			PathUtils.getCurPC()._addDet(Operator.LT, (Expression)idxTaint.getSingleLabel(), new BVConstant(b.getLength(), 32));
-			PathUtils.getCurPC()._addDet(Operator.GE, (Expression)idxTaint.getSingleLabel(), new BVConstant(0, 32));
+			PhosphorPathUtils.getCurPC()._addDet(Operator.LT, (Expression)idxTaint.getSingleLabel(), new BVConstant(b.getLength(), 32));
+			PhosphorPathUtils.getCurPC()._addDet(Operator.GE, (Expression)idxTaint.getSingleLabel(), new BVConstant(0, 32));
 
 			// Array position becomes symbolic new value
 			return t;
@@ -315,8 +315,8 @@ public class TaintListener extends DerivedTaintListener {
 //			Expression newArray = setArrayVar(b.getVal(), (Expression)idxTaint.getSingleLabel(), taintedVal ? (Expression) t.getSingleLabel() : c);
 //
 //			// Index is within the array bounds
-//			PathUtils.getCurPC()._addDet(Operator.LT, (Expression)idxTaint.getSingleLabel(), new BVConstant(b.getLength(), 32));
-//			PathUtils.getCurPC()._addDet(Operator.GE, (Expression)idxTaint.getSingleLabel(), new BVConstant(0, 32));
+//			PhosphorPathUtils.getCurPC()._addDet(Operator.LT, (Expression)idxTaint.getSingleLabel(), new BVConstant(b.getLength(), 32));
+//			PhosphorPathUtils.getCurPC()._addDet(Operator.GE, (Expression)idxTaint.getSingleLabel(), new BVConstant(0, 32));
 //
 ////			return new ExpressionTaint(new BinaryOperation(Operator.SELECT, newArray, new BVConstant(idx, 32)));
 //			return new ExpressionTaint(c);
@@ -336,7 +336,7 @@ public class TaintListener extends DerivedTaintListener {
 		    ret.taint = null;
 		else
 			ret.taint = genericReadArray(b, idxTaint, idx, new BoolConstant(ret.val));
-//		if (idxTaint != null && idxTaint.toString().matches(PathUtils.interesting))
+//		if (idxTaint != null && idxTaint.toString().matches(PhosphorPathUtils.interesting))
 //			System.out.print("");
 		return ret;
 	}
@@ -348,7 +348,7 @@ public class TaintListener extends DerivedTaintListener {
 			ret.taint = null;
 		else
 			ret.taint = genericReadArray(b, idxTaint, idx, new BVConstant(ret.val, 32));
-//		if (idxTaint != null && idxTaint.toString().matches(PathUtils.interesting))
+//		if (idxTaint != null && idxTaint.toString().matches(PhosphorPathUtils.interesting))
 //			System.out.print("");
 		return ret;
 	}
@@ -360,7 +360,7 @@ public class TaintListener extends DerivedTaintListener {
 			ret.taint = null;
 		else
 			ret.taint = genericReadArray(b, idxTaint, idx, new BVConstant(ret.val, 32));
-//		if (idxTaint != null && idxTaint.toString().matches(PathUtils.interesting))
+//		if (idxTaint != null && idxTaint.toString().matches(PhosphorPathUtils.interesting))
 //			System.out.print("");
 		return ret;
 	}
@@ -372,7 +372,7 @@ public class TaintListener extends DerivedTaintListener {
 			ret.taint = null;
 		else
 			ret.taint = genericReadArray(b, idxTaint, idx, new BVConstant(ret.val, 32));
-//		if (idxTaint != null && idxTaint.toString().matches(PathUtils.interesting))
+//		if (idxTaint != null && idxTaint.toString().matches(PhosphorPathUtils.interesting))
 //			System.out.print("");
 		return ret;
 	}
@@ -384,7 +384,7 @@ public class TaintListener extends DerivedTaintListener {
 			ret.taint = null;
 		else
 			ret.taint = genericReadArray(b, idxTaint, idx, new BVConstant(ret.val, 32));
-//		if (idxTaint != null && idxTaint.toString().matches(PathUtils.interesting))
+//		if (idxTaint != null && idxTaint.toString().matches(PhosphorPathUtils.interesting))
 //			System.out.print("");
 		return ret;
 	}
@@ -396,7 +396,7 @@ public class TaintListener extends DerivedTaintListener {
 			ret.taint = null;
 		else
 			ret.taint = genericReadArray(b, idxTaint, idx, new BVConstant(ret.val, 64));
-//		if (idxTaint != null && idxTaint.toString().matches(PathUtils.interesting))
+//		if (idxTaint != null && idxTaint.toString().matches(PhosphorPathUtils.interesting))
 //			System.out.print("");
 		return ret;
 	}

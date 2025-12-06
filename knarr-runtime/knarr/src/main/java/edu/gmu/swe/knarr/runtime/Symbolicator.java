@@ -110,15 +110,15 @@ public class Symbolicator {
 	public static synchronized ArrayList<SimpleEntry<String, Object>> dumpConstraints(String name) {
 		collectArrayLenConstraints();
 			// if (DEBUG)
-//			System.out.println("Constraints: " + PathUtils.getCurPC().constraints);
-		if(PathUtils.getCurPC().constraints == null)
+//			System.out.println("Constraints: " + PhosphorPathUtils.getCurPC().constraints);
+		if(PhosphorPathUtils.getCurPC().constraints == null)
 			return null;
 
 		try (ObjectOutputStream oos = new ObjectOutputStream(getSocket().getOutputStream())) {
 			ObjectInputStream ois = new ObjectInputStream(getSocket().getInputStream());
 
 //			{
-//				Expression exp = PathUtils.getCurPC().constraints;
+//				Expression exp = PhosphorPathUtils.getCurPC().constraints;
 //				long n = 0;
 //				while (true) {
 //					if (exp instanceof Operation) {
@@ -135,7 +135,7 @@ public class Symbolicator {
 //				}
 //
 //				oos.writeLong(n);
-//			    exp = PathUtils.getCurPC().constraints;
+//			    exp = PhosphorPathUtils.getCurPC().constraints;
 //			    while (true) {
 //					if (exp instanceof Operation) {
 //						Operation op = (Operation) exp;
@@ -151,7 +151,7 @@ public class Symbolicator {
 //					}
 //				}
 //			}
-			oos.writeObject(PathUtils.getCurPC().constraints);
+			oos.writeObject(PhosphorPathUtils.getCurPC().constraints);
 
 			// Solve constraints?
 			oos.writeBoolean(true);
@@ -202,13 +202,13 @@ public class Symbolicator {
 	}
 
 	public static void reset() {
-		PathUtils.getCurPC().constraints = null;
-		PathUtils.getCurPC().size = 0;
+		PhosphorPathUtils.getCurPC().constraints = null;
+		PhosphorPathUtils.getCurPC().size = 0;
 		serverConnection = null;
 		firstLabel = null;
 		TaintListener.arrayNames.clear();
 		StringUtils.stringName = 0;
-		PathUtils.usedLabels.clear();
+		PhosphorPathUtils.usedLabels.clear();
 		Coverage.instance.reset();
 		autoLblr.set(0);
 		Coverage.count = 0;
@@ -280,7 +280,7 @@ public class Symbolicator {
 			Expression c = new BVVariable(name, 32);
 			in.valuePHOSPHOR_TAG.taints[i] = new ExpressionTaint(c);
 			t = new BinaryOperation(Operator.CONCAT, t, c);
-			PathUtils.getCurPC()._addDet(Operator.EQ, new BinaryOperation(Operator.BIT_AND, new BVVariable(name, 32), FFFFFF00_32), Operation.ZERO);
+			PhosphorPathUtils.getCurPC()._addDet(Operator.EQ, new BinaryOperation(Operator.BIT_AND, new BVVariable(name, 32), FFFFFF00_32), Operation.ZERO);
 		}
 
 		in.PHOSPHOR_TAG = new ExpressionTaint(t);
@@ -344,7 +344,7 @@ public class Symbolicator {
 	}
 
 	public static int[] symbolic$$PHOSPHORTAGGED(String label, LazyIntArrayObjTags in_tags, int[] in) {
-		// PathUtils.checkLabelAndInitJPF(label);
+		// PhosphorPathUtils.checkLabelAndInitJPF(label);
 		// Expression exp = new
 		// SymbolicInteger(label+"_length",0,Integer.MAX_VALUE);
 		// symbolicLabels.put(exp, label);
@@ -412,8 +412,8 @@ public class Symbolicator {
 	// }
 
 	// public static <T> T[] symbolic(String label, T[] in) {
-	// PathUtils.checkLabelAndInitJPF(label);
-	// PathUtils.registerTaintOnArray(in, label);
+	// PhosphorPathUtils.checkLabelAndInitJPF(label);
+	// PhosphorPathUtils.registerTaintOnArray(in, label);
 	// Expression exp = new
 	// SymbolicInteger(label+"_length",0,Integer.MAX_VALUE); //for array length
 	// ArrayHelper.setExpression(in, exp);
@@ -454,7 +454,7 @@ public class Symbolicator {
 			return in;
 		}
 		if (in instanceof TaintedWithObjTag) {
-			PathUtils.checkLabelAndInitJPF(label);
+			PhosphorPathUtils.checkLabelAndInitJPF(label);
 			Expression taint = new BVVariable(label, 32);
 			((TaintedWithObjTag) in).setPHOSPHOR_TAG(taint);
 			return in;
@@ -462,7 +462,7 @@ public class Symbolicator {
 		throw new UnsupportedOperationException();
 		// else if(in instanceof int[])
 		// {
-		// PathUtils.checkLabelAndInitJPF(label);
+		// PhosphorPathUtils.checkLabelAndInitJPF(label);
 		// symbolic$$PHOSPHORTAGGED(label,null,(int[]) in);
 		// // Expression exp = new SymbolicInteger(0, Integer.MAX_VALUE);
 		// // exp.elements = new SymbolicInteger[((int[])in).length];
@@ -482,7 +482,7 @@ public class Symbolicator {
 //			lblCounters.put(lbl, new AtomicInteger());
 //		AtomicInteger i = lblCounters.get(lbl);
 //		lbl = lbl + "_" + i.getAndIncrement();
-//		PathUtils.checkLabelAndInitJPF(lbl);
+//		PhosphorPathUtils.checkLabelAndInitJPF(lbl);
 		Expression ret = null;
 		if (str == str.intern())
 			str = new String(str);
@@ -496,7 +496,7 @@ public class Symbolicator {
 			lblCounters.put(lbl, new AtomicInteger());
 		AtomicInteger i = lblCounters.get(lbl);
 		lbl = lbl + "_" + i.getAndIncrement();
-		PathUtils.checkLabelAndInitJPF(lbl);
+		PhosphorPathUtils.checkLabelAndInitJPF(lbl);
 		Expression ret = null;
 		switch (sort) {
 		case Type.OBJECT:
@@ -504,7 +504,7 @@ public class Symbolicator {
 			break;
 		case Type.ARRAY:
 			throw new UnsupportedOperationException();
-			// PathUtils.checkLabelAndInitJPF(lbl);
+			// PhosphorPathUtils.checkLabelAndInitJPF(lbl);
 			// Expression exp = new
 			// SymbolicInteger(lbl+"_length",0,Integer.MAX_VALUE); //for array
 			// length
@@ -549,7 +549,7 @@ public class Symbolicator {
 	static AtomicInteger autoLblr = new AtomicInteger();
 
 	public static TaintedIntWithObjTag symbolic$$PHOSPHORTAGGED(String label, Taint<Expression> tag, int in, TaintedIntWithObjTag ret) {
-		PathUtils.checkLabelAndInitJPF(label);
+		PhosphorPathUtils.checkLabelAndInitJPF(label);
 		ret.val = in;
 		if (mySoln != null && !mySoln.isUnconstrained)
 			ret.val = (Integer) mySoln.varMapping.get(label);
@@ -579,20 +579,20 @@ public class Symbolicator {
 	}
 
 	public static TaintedByteWithObjTag symbolic$$PHOSPHORTAGGED(String label, Taint<Expression> tag, byte in, TaintedByteWithObjTag ret) {
-		PathUtils.checkLabelAndInitJPF(label);
+		PhosphorPathUtils.checkLabelAndInitJPF(label);
 		ret.val = in;
 		if (mySoln != null && !mySoln.isUnconstrained)
 			ret.val = ((Integer) mySoln.varMapping.get(label)).byteValue();
 		ret.taint = new ExpressionTaint(new BVVariable((String) label, 32));
         Expression pos = new BinaryOperation(Operator.EQ, new BinaryOperation(Operator.BIT_AND, new BVVariable((String) label, 32), FFFFFF00_32), Operation.ZERO);
 		Expression neg = new BinaryOperation(Operator.EQ, new BinaryOperation(Operator.BIT_AND, new BVVariable((String) label, 32), FFFFFF00_32), FFFFFF00_32);
-		PathUtils.getCurPC()._addDet(Operator.OR, pos, neg);
+		PhosphorPathUtils.getCurPC()._addDet(Operator.OR, pos, neg);
 		symbolicLabels.put((ExpressionTaint) ret.taint, label);
 		return ret;
 	}
 
 	public static TaintedBooleanWithObjTag symbolic$$PHOSPHORTAGGED(String label, Taint<Expression> tag, boolean in, TaintedBooleanWithObjTag ret) {
-		PathUtils.checkLabelAndInitJPF(label);
+		PhosphorPathUtils.checkLabelAndInitJPF(label);
 		ret.val = in;
 		if (mySoln != null && !mySoln.isUnconstrained)
 			ret.val = ((Integer) mySoln.varMapping.get(label)).intValue() == 1;
@@ -602,18 +602,18 @@ public class Symbolicator {
 	}
 
 	public static TaintedCharWithObjTag symbolic$$PHOSPHORTAGGED(String label, Taint<Expression> tag, char in, TaintedCharWithObjTag ret) {
-		PathUtils.checkLabelAndInitJPF(label);
+		PhosphorPathUtils.checkLabelAndInitJPF(label);
 		ret.val = in;
 		if (mySoln != null && !mySoln.isUnconstrained)
 			ret.val = (char) ((Integer) mySoln.varMapping.get(label)).intValue();
 		ret.taint = new ExpressionTaint(new BVVariable((String) label, 32));
-		PathUtils.getCurPC()._addDet(Operator.EQ, new BinaryOperation(Operator.BIT_AND, new BVVariable((String) label, 32), FFFF0000_32), Operation.ZERO);
+		PhosphorPathUtils.getCurPC()._addDet(Operator.EQ, new BinaryOperation(Operator.BIT_AND, new BVVariable((String) label, 32), FFFF0000_32), Operation.ZERO);
 		symbolicLabels.put((ExpressionTaint) ret.taint, label);
 		return ret;
 	}
 
 	public static TaintedDoubleWithObjTag symbolic$$PHOSPHORTAGGED(String label, Taint<Expression> tag, double in, TaintedDoubleWithObjTag ret) {
-		PathUtils.checkLabelAndInitJPF(label);
+		PhosphorPathUtils.checkLabelAndInitJPF(label);
 		ret.val = in;
 		if (mySoln != null && !mySoln.isUnconstrained)
 			ret.val = ((Double) mySoln.varMapping.get(label)).doubleValue();
@@ -623,7 +623,7 @@ public class Symbolicator {
 	}
 
 	public static TaintedFloatWithObjTag symbolic$$PHOSPHORTAGGED(String label, Taint<Expression> tag, float in, TaintedFloatWithObjTag ret) {
-		PathUtils.checkLabelAndInitJPF(label);
+		PhosphorPathUtils.checkLabelAndInitJPF(label);
 		ret.val = in;
 		if (mySoln != null && !mySoln.isUnconstrained)
 			ret.val = ((Double) mySoln.varMapping.get(label)).floatValue();
@@ -633,7 +633,7 @@ public class Symbolicator {
 	}
 
 	public static TaintedLongWithObjTag symbolic$$PHOSPHORTAGGED(String label, Taint<Expression> tag, long in, TaintedLongWithObjTag ret) {
-		PathUtils.checkLabelAndInitJPF(label);
+		PhosphorPathUtils.checkLabelAndInitJPF(label);
 		ret.val = in;
 		if (mySoln != null && !mySoln.isUnconstrained)
 			ret.val = ((Long) mySoln.varMapping.get(label)).longValue();
@@ -643,12 +643,12 @@ public class Symbolicator {
 	}
 
 	public static TaintedShortWithObjTag symbolic$$PHOSPHORTAGGED(String label, Taint<Expression> tag, short in, TaintedShortWithObjTag ret) {
-		PathUtils.checkLabelAndInitJPF(label);
+		PhosphorPathUtils.checkLabelAndInitJPF(label);
 		ret.val = in;
 		if (mySoln != null && !mySoln.isUnconstrained)
 			ret.val = ((Short) mySoln.varMapping.get(label)).shortValue();
 		ret.taint = new ExpressionTaint(new BVVariable((String) label, 32));
-		PathUtils.getCurPC()._addDet(Operator.EQ, new BinaryOperation(Operator.BIT_AND, new BVVariable((String) label, 32), FFFF0000_32), Operation.ZERO);
+		PhosphorPathUtils.getCurPC()._addDet(Operator.EQ, new BinaryOperation(Operator.BIT_AND, new BVVariable((String) label, 32), FFFF0000_32), Operation.ZERO);
 		symbolicLabels.put((ExpressionTaint) ret.taint, label);
 		return ret;
 	}

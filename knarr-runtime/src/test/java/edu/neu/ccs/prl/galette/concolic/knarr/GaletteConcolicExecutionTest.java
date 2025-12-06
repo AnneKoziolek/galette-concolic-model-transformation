@@ -3,9 +3,9 @@ package edu.neu.ccs.prl.galette.concolic.knarr;
 import static org.junit.jupiter.api.Assertions.*;
 
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.GaletteKnarrTaintListener;
+import edu.neu.ccs.prl.galette.concolic.knarr.runtime.GalettePathUtils;
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.GaletteSymbolicator;
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.PathConditionWrapper;
-import edu.neu.ccs.prl.galette.concolic.knarr.runtime.PathUtils;
 import edu.neu.ccs.prl.galette.internal.runtime.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,7 +61,7 @@ public class GaletteConcolicExecutionTest {
         listener.onArithmetic(x, y, result);
 
         // Check that constraints were generated
-        PathConditionWrapper pc = PathUtils.getCurPC();
+        PathConditionWrapper pc = GalettePathUtils.getCurPC();
         assertTrue(pc.size() > 0);
         assertFalse(pc.isEmpty());
     }
@@ -77,7 +77,7 @@ public class GaletteConcolicExecutionTest {
         // Simulate taking a branch
         listener.onBranch(condition, true);
 
-        PathConditionWrapper pc = PathUtils.getCurPC();
+        PathConditionWrapper pc = GalettePathUtils.getCurPC();
         assertTrue(pc.size() > 0);
 
         // Clear and test not taking the branch
@@ -98,7 +98,7 @@ public class GaletteConcolicExecutionTest {
         // Test equality comparison (left == right) -> false
         listener.onComparison(left, right, 159, false); // IF_ICMPEQ with false result
 
-        PathConditionWrapper pc = PathUtils.getCurPC();
+        PathConditionWrapper pc = GalettePathUtils.getCurPC();
         assertTrue(pc.size() > 0);
 
         // Test less than comparison (left < right) -> false
@@ -122,7 +122,7 @@ public class GaletteConcolicExecutionTest {
         listener.onMethodCall("testMethod", arguments, result);
 
         // Should have generated some constraints for symbolic arguments
-        PathConditionWrapper pc = PathUtils.getCurPC();
+        PathConditionWrapper pc = GalettePathUtils.getCurPC();
         assertTrue(pc.size() >= 0); // May be 0 if no constraints generated for this simple case
     }
 
@@ -138,7 +138,7 @@ public class GaletteConcolicExecutionTest {
         // Simulate array write
         listener.onArrayAccess(arrayTag, indexTag, valueTag, true);
 
-        PathConditionWrapper pc = PathUtils.getCurPC();
+        PathConditionWrapper pc = GalettePathUtils.getCurPC();
         assertTrue(pc.size() >= 0);
 
         // Simulate array read
@@ -162,7 +162,7 @@ public class GaletteConcolicExecutionTest {
         listener.onComparison(y, z, 161, true); // y < z -> true
         listener.onBranch(x, true); // Branch on x
 
-        PathConditionWrapper pc = PathUtils.getCurPC();
+        PathConditionWrapper pc = GalettePathUtils.getCurPC();
         assertTrue(pc.size() > 0);
 
         // Test converting to single expression
@@ -208,7 +208,7 @@ public class GaletteConcolicExecutionTest {
         listener.onBranch(z, true);
 
         // Verify constraints were generated
-        PathConditionWrapper pc = PathUtils.getCurPC();
+        PathConditionWrapper pc = GalettePathUtils.getCurPC();
         assertTrue(pc.size() > 0);
 
         // Should have constraints for:

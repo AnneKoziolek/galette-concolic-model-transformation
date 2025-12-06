@@ -1,8 +1,8 @@
 package edu.neu.ccs.prl.galette.concolic.knarr.compat;
 
+import edu.neu.ccs.prl.galette.concolic.knarr.runtime.GalettePathUtils;
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.GaletteSymbolicator;
 import edu.neu.ccs.prl.galette.concolic.knarr.runtime.PathConditionWrapper;
-import edu.neu.ccs.prl.galette.concolic.knarr.runtime.PathUtils;
 import edu.neu.ccs.prl.galette.internal.runtime.Tag;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
@@ -256,7 +256,7 @@ public class Symbolicator {
      * @return String representation of path condition
      */
     public static String getCurrentPathCondition() {
-        PathConditionWrapper pc = PathUtils.getCurPC();
+        PathConditionWrapper pc = GalettePathUtils.getCurPC();
         if (pc.isEmpty()) {
             return "[]";
         }
@@ -274,7 +274,9 @@ public class Symbolicator {
         StringBuilder sb = new StringBuilder();
         sb.append("Symbolicator Statistics:\n");
         sb.append("  Symbolic values: ").append(symbolicValues.size()).append("\n");
-        sb.append("  Path constraints: ").append(PathUtils.getCurPC().size()).append("\n");
+        sb.append("  Path constraints: ")
+                .append(GalettePathUtils.getCurPC().size())
+                .append("\n");
         sb.append("  Current PC: ").append(getCurrentPathCondition()).append("\n");
         return sb.toString();
     }

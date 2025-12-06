@@ -206,7 +206,7 @@ public class StringTagFactory extends ClassVisitor implements Opcodes {
 //			mv.visitVarInsn(ILOAD, 4);
 //			mv.visitVarInsn(ALOAD, 5);
 //			mv.visitVarInsn(ILOAD, 6);
-//			mv.visitMethodInsn(INVOKESTATIC, PathUtils.INTERNAL_NAME, "registerNewString", "(" +
+//			mv.visitMethodInsn(INVOKESTATIC, PhosphorPhosphorPathUtils.INTERNAL_NAME, "registerNewString", "(" +
 //					Type.getType(String.class) +
 //					Type.getType(LazyArrayObjTags.class) + Type.getType(Object.class).getDescriptor() +
 //					Configuration.TAINT_TAG_DESC + "I" +

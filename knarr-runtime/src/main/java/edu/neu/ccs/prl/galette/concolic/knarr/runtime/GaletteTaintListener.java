@@ -127,7 +127,7 @@ public class GaletteTaintListener implements ConcolicTaintListener {
     public void onPathConstraint(Object constraint) {
         // Add constraint to the current path condition
         if (constraint instanceof Expression) {
-            PathUtils.getCurPC().addConstraint((Expression) constraint);
+            GalettePathUtils.getCurPC().addConstraint((Expression) constraint);
         }
     }
 

@@ -14,7 +14,7 @@ import za.ac.sun.cs.green.expr.Operation.Operator;
  *
  * @author [Anne Koziolek](https://github.com/AnneKoziolek)
  */
-public class PathUtils {
+public class GalettePathUtils {
 
     /**
      * Constants for bit vector operations.
@@ -33,7 +33,7 @@ public class PathUtils {
      */
     public static final boolean IGNORE_SHIFTS = true;
 
-    public static final String INTERNAL_NAME = "edu/neu/ccs/prl/galette/concolic/knarr/runtime/PathUtils";
+    public static final String INTERNAL_NAME = "edu/neu/ccs/prl/galette/concolic/knarr/runtime/GalettePathUtils";
 
     /**
      * JPF initialization flag.
