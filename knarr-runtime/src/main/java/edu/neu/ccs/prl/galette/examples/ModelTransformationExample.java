@@ -86,6 +86,7 @@ public class ModelTransformationExample {
 
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
+            e.printStackTrace(); // Show full stack trace for debugging
             scanner.nextLine(); // Clear invalid input
             showMenu();
         }
@@ -333,26 +334,36 @@ public class ModelTransformationExample {
 
         // Fallback: Generate alternative inputs based on analysis of explored inputs
         // Use dynamic threshold discovery from path constraints
-        PathConditionWrapper pc = PathUtils.getCurPCWithGalette();
-        Set<Double> discoveredThresholds = new HashSet<>();
-        if (pc != null && !pc.isEmpty()) {
-            List<Expression> constraints = pc.getConstraints();
-            for (Expression constraint : constraints) {
-                discoveredThresholds.addAll(SymbolicExecutionWrapper.extractThresholdsFromConstraint(constraint));
-            }
-        }
-
-        // If we found thresholds from constraints, use them
-        if (!discoveredThresholds.isEmpty()) {
-            for (Double threshold : discoveredThresholds) {
-                boolean hasLowValue = exploredInputs.stream().anyMatch(v -> v <= threshold);
-                boolean hasHighValue = exploredInputs.stream().anyMatch(v -> v > threshold);
-
-                if (!hasLowValue) {
-                    return threshold - 1.0; // Test the thickness <= threshold path
-                } else if (!hasHighValue) {
-                    return threshold + 1.0; // Test the thickness > threshold path
+        try {
+            PathConditionWrapper pc = PathUtils.getCurPCWithGalette();
+            Set<Double> discoveredThresholds = new HashSet<>();
+            if (pc != null && !pc.isEmpty()) {
+                List<Expression> constraints = pc.getConstraints();
+                for (Expression constraint : constraints) {
+                    if (constraint != null) {
+                        discoveredThresholds.addAll(
+                                SymbolicExecutionWrapper.extractThresholdsFromConstraint(constraint));
+                    }
                 }
+            }
+
+            // If we found thresholds from constraints, use them
+            if (!discoveredThresholds.isEmpty()) {
+                for (Double threshold : discoveredThresholds) {
+                    boolean hasLowValue = exploredInputs.stream().anyMatch(v -> v <= threshold);
+                    boolean hasHighValue = exploredInputs.stream().anyMatch(v -> v > threshold);
+
+                    if (!hasLowValue) {
+                        return threshold - 1.0; // Test the thickness <= threshold path
+                    } else if (!hasHighValue) {
+                        return threshold + 1.0; // Test the thickness > threshold path
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Warning: Could not extract thresholds from path constraints: " + e.getMessage());
+            if (e.getMessage() == null) {
+                e.printStackTrace(); // Print stack trace if message is null
             }
         }
 

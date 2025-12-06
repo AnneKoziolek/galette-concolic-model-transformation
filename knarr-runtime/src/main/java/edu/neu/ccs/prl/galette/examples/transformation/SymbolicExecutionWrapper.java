@@ -414,6 +414,10 @@ public class SymbolicExecutionWrapper {
      * Recursively extract numeric constants from expression tree.
      */
     private static void extractThresholdsRecursive(Expression expr, Set<Double> thresholds) {
+        if (expr == null) {
+            return; // Null-safe: skip null expressions
+        }
+
         if (expr instanceof RealConstant) {
             thresholds.add(((RealConstant) expr).getValue());
         } else if (expr instanceof IntConstant) {
