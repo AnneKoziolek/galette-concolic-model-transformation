@@ -21,8 +21,8 @@ echo ""
 # ============================================================================
 FORCE_CLEAN_BUILD=false        # Force complete clean rebuild (overrides everything)
 FORCE_REBUILD_AGENT=false      # Force rebuild galette-agent JAR only
-FORCE_REBUILD_CLASSES=true    # Force rebuild knarr-runtime Java classes only
-FORCE_REBUILD_JAVA=true        # Force rebuild instrumented Java installation only
+FORCE_REBUILD_CLASSES=false    # Force rebuild knarr-runtime Java classes only
+FORCE_REBUILD_JAVA=false        # Force rebuild instrumented Java installation only
 
 # Function to check if compilation and instrumentation is needed
 needs_build() {

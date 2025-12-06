@@ -1,4 +1,4 @@
-package edu.neu.ccs.prl.galette.examples.models.target;
+package edu.neu.ccs.prl.galette.examples.models.targetmodel;
 
 /**
  * Target model representing an enhanced brake disc with computed geometric properties.
