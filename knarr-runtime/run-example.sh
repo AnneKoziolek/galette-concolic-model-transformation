@@ -5,8 +5,16 @@
 
 set -e  # Exit on any error
 
+# Ensure Java 17 is used for builds and execution
+export JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"
+export PATH="$JAVA_HOME/bin:$PATH"
+
 echo "🚀 Enhanced Galette Knarr Runtime Example"
 echo "=========================================="
+echo "☕ Java Configuration:"
+echo "   JAVA_HOME: $JAVA_HOME"
+echo "   Java version: $(java -version 2>&1 | head -1)"
+echo ""
 
 # TEMPORARY: Force clean rebuild (uncomment to always rebuild)
 FORCE_CLEAN_BUILD=true
@@ -78,7 +86,7 @@ if needs_build; then
     
     # Then create instrumented Java via Maven plugin
     echo "⚙️ Creating instrumented Java installation..."
-    mvn process-test-resources -q
+    mvn process-resources -q
     
     if [ $? -ne 0 ]; then
         echo "❌ Build failed!"
