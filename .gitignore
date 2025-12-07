@@ -54,3 +54,4 @@ lastClass.txt
 /supplemental/*.tgz
 migration goals e-mail.txt
 migration-goals-e-mail.txt
+.m2repo/*

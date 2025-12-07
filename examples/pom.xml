@@ -17,6 +17,20 @@
     <name>Galette Concolic Execution Examples</name>
     <description>Examples demonstrating Galette concolic execution with Knarr integration</description>
 
+    <repositories>
+        <!-- Local workspace Maven repository (highest priority) -->
+        <repository>
+            <id>local-repo</id>
+            <url>file://${local.repo.path}</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
@@ -39,7 +53,7 @@
 
         <!-- Green constraint solver for expressions -->
         <dependency>
-            <groupId>za.ac.sun.cs.green</groupId>
+            <groupId>edu.gmu.swe.greensolver</groupId>
             <artifactId>green</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>

@@ -11,6 +11,10 @@
 #   FORCE_REBUILD_CLASSES=true         # Rebuild only knarr-runtime classes (for code changes)
 #   FORCE_REBUILD_JAVA=true            # Rebuild only instrumented Java (for JDK issues)
 #   FORCE_CLEAN_BUILD=true             # Full clean rebuild (everything)
+#
+# NOTE: On first run or after cloning, the script will automatically build and install
+#       all required dependencies (Green solver and Galette modules) to a workspace-local
+#       Maven repository for isolation between parallel VS Code instances.
 
 set -e  # Exit on any error
 
@@ -28,13 +32,26 @@ echo ""
 
 
 # Build configuration flags - set to true to force rebuild of specific components
-FORCE_CLEAN_BUILD=true        # Force complete clean rebuild (overrides everything)
+FORCE_CLEAN_BUILD=true        # Set to true for complete clean rebuild (overrides everything)
 FORCE_REBUILD_AGENT=false      # Force rebuild galette-agent JAR only
 FORCE_REBUILD_CLASSES=false    # Force rebuild knarr-runtime Java classes only
 FORCE_REBUILD_JAVA=false       # Force rebuild instrumented Java installation only
 
 # Use workspace-local Maven repository for isolation
 MAVEN_REPO_LOCAL="../.m2repo"
+# Convert to absolute path for Maven repository URL
+MAVEN_REPO_ABSOLUTE="$(cd .. && pwd)/.m2repo"
+
+# Check if this is a fresh clone (no local Maven repo)
+if [ ! -d "$MAVEN_REPO_LOCAL" ]; then
+    echo "📦 Fresh clone detected - initializing workspace-local Maven repository"
+    echo "🔨 Building and installing all dependencies to $MAVEN_REPO_LOCAL"
+    echo "   (This may take a few minutes on first run)"
+    echo ""
+    
+    # Force full setup on fresh clone
+    FORCE_CLEAN_BUILD=true
+fi
 
 # Function to check if compilation and instrumentation is needed
 needs_build() {
@@ -83,11 +100,31 @@ need_classes_build=false
 need_java_build=false
 
 # Check individual build requirements
-if [ "$FORCE_CLEAN_BUILD" = "true" ]; then
-    echo "🧹 FORCE_CLEAN_BUILD enabled - forcing complete rebuild"
-    need_agent_build=true
-    need_classes_build=true
-    need_java_build=true
+    if [ "$FORCE_CLEAN_BUILD" = "true" ]; then
+        echo "🧹 FORCE_CLEAN_BUILD enabled - forcing complete rebuild"
+        # Clear negative cache for Maven to force re-resolution of artifacts
+        rm -rf "$MAVEN_REPO_LOCAL" 2>/dev/null || true
+        # Install all galette modules and dependencies into the local Maven repo for plugin resolution
+        echo "🔨 Installing Green solver dependency into local Maven repo..."
+        echo "   Building: green-solver/green"
+        (cd ../../green-solver/green && mvn clean install -q -DskipTests -U -Dmaven.repo.local="$MAVEN_REPO_ABSOLUTE" -Dlocal.repo.path="$MAVEN_REPO_ABSOLUTE")
+        if [ $? -ne 0 ]; then
+            echo "❌ Green solver build failed!"
+            exit 1
+        fi
+        echo "✅ Green solver installed"
+        
+        echo "🔨 Installing all Galette modules into local Maven repo..."
+        echo "   Building: Galette project modules"
+        (cd .. && mvn clean install -q -DskipTests -U -Dmaven.repo.local="$MAVEN_REPO_ABSOLUTE" -Dlocal.repo.path="$MAVEN_REPO_ABSOLUTE")
+        if [ $? -ne 0 ]; then
+            echo "❌ Galette modules build failed!"
+            exit 1
+        fi
+        echo "✅ Galette modules installed"
+        need_agent_build=true
+        need_classes_build=true
+        need_java_build=true
 else
     # Check if galette-agent needs rebuild
     if [ "$FORCE_REBUILD_AGENT" = "true" ] || [ ! -f "../galette-agent/target/galette-agent-1.0.0-SNAPSHOT.jar" ]; then
@@ -115,7 +152,7 @@ if [ "$need_agent_build" = "true" ] || [ "$need_classes_build" = "true" ] || [ "
     # Clean target if doing complete rebuild
     if [ "$FORCE_CLEAN_BUILD" = "true" ]; then
         echo "🧹 Cleaning Maven target directory..."
-        mvn clean -q -Dmaven.repo.local="$MAVEN_REPO_LOCAL"
+        mvn clean -q -Dmaven.repo.local="$MAVEN_REPO_ABSOLUTE" -Dlocal.repo.path="$MAVEN_REPO_ABSOLUTE"
         
         # Remove instrumented Java if it exists
         if [ -d "target/galette/java" ]; then
@@ -127,7 +164,7 @@ if [ "$need_agent_build" = "true" ] || [ "$need_classes_build" = "true" ] || [ "
     # Step 1: Build galette-agent if needed
     if [ "$need_agent_build" = "true" ]; then
         echo "🔨 Building and installing galette-agent..."
-        (cd ../galette-agent && mvn clean install -q -DskipTests -Dmaven.repo.local="$MAVEN_REPO_LOCAL")
+        (cd ../galette-agent && mvn clean install -q -DskipTests -Dmaven.repo.local="$MAVEN_REPO_ABSOLUTE" -Dlocal.repo.path="$MAVEN_REPO_ABSOLUTE")
         if [ $? -ne 0 ]; then
             echo "❌ Galette agent build failed!"
             exit 1
@@ -140,7 +177,7 @@ if [ "$need_agent_build" = "true" ] || [ "$need_classes_build" = "true" ] || [ "
     # Step 2: Compile Java classes if needed
     if [ "$need_classes_build" = "true" ]; then
         echo "🔨 Compiling Java classes..."
-        mvn compile -q -Dmaven.repo.local="$MAVEN_REPO_LOCAL"
+        mvn compile -q -Dmaven.repo.local="$MAVEN_REPO_ABSOLUTE" -Dlocal.repo.path="$MAVEN_REPO_ABSOLUTE"
         if [ $? -ne 0 ]; then
             echo "❌ Java compilation failed!"
             exit 1
@@ -153,7 +190,7 @@ if [ "$need_agent_build" = "true" ] || [ "$need_classes_build" = "true" ] || [ "
     # Step 3: Create instrumented Java if needed
     if [ "$need_java_build" = "true" ]; then
         echo "⚙️ Creating instrumented Java installation..."
-        mvn process-test-resources -q -Dmaven.repo.local="$MAVEN_REPO_LOCAL"
+        mvn process-test-resources -q -Dmaven.repo.local="$MAVEN_REPO_ABSOLUTE" -Dlocal.repo.path="$MAVEN_REPO_ABSOLUTE"
         if [ $? -ne 0 ]; then
             echo "❌ Instrumented Java creation failed!"
             exit 1
@@ -201,7 +238,7 @@ echo "   Galette Agent: $GALETTE_AGENT"
 # Generate classpath using Maven (only if needed)
 if [ ! -f cp.txt ] || [ $(find cp.txt -mmin +60 2>/dev/null | wc -l) -eq 1 ]; then
     echo "📋 Generating classpath..."
-    mvn dependency:build-classpath -Dmdep.outputFile=cp.txt -q -Dmaven.repo.local="$MAVEN_REPO_LOCAL"
+    mvn dependency:build-classpath -Dmdep.outputFile=cp.txt -q -Dmaven.repo.local="$MAVEN_REPO_ABSOLUTE" -Dlocal.repo.path="$MAVEN_REPO_ABSOLUTE"
     
     if [ ! -f cp.txt ]; then
         echo "❌ Failed to generate classpath file!"

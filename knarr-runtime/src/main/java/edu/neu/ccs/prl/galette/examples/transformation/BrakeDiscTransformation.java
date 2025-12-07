@@ -27,7 +27,7 @@ public class BrakeDiscTransformation {
     /**
      * Threshold for additional stiffness determination.
      */
-    private static final double STIFFNESS_THRESHOLD = 60.0; // mm
+    private static final double STIFFNESS_THRESHOLD = 80.0; // mm
 
     /**
      * Transform a source brake disc model to a target model with enhanced properties.

@@ -14,6 +14,20 @@
         Contains runtime classes for dynamic symbolic execution and constraint solving.
     </description>
     
+    <repositories>
+        <!-- Local workspace Maven repository (highest priority) -->
+        <repository>
+            <id>local-repo</id>
+            <url>file://${local.repo.path}</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+    
     <dependencies>
         <!-- Galette agent dependency for taint tracking -->
         <dependency>
@@ -22,9 +36,9 @@
             <version>${project.version}</version>
         </dependency>
         
-        <!-- Green constraint solver dependency -->
+        <!-- Green constraint solver dependency (local build groupId) -->
         <dependency>
-            <groupId>za.ac.sun.cs.green</groupId>
+            <groupId>edu.gmu.swe.greensolver</groupId>
             <artifactId>green</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
