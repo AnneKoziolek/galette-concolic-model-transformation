@@ -26,11 +26,15 @@ echo "   JAVA_HOME: $JAVA_HOME"
 echo "   Java version: $(java -version 2>&1 | head -1)"
 echo ""
 
+
 # Build configuration flags - set to true to force rebuild of specific components
 FORCE_CLEAN_BUILD=true        # Force complete clean rebuild (overrides everything)
 FORCE_REBUILD_AGENT=false      # Force rebuild galette-agent JAR only
 FORCE_REBUILD_CLASSES=false    # Force rebuild knarr-runtime Java classes only
 FORCE_REBUILD_JAVA=false       # Force rebuild instrumented Java installation only
+
+# Use workspace-local Maven repository for isolation
+MAVEN_REPO_LOCAL="../.m2repo"
 
 # Function to check if compilation and instrumentation is needed
 needs_build() {
@@ -111,7 +115,7 @@ if [ "$need_agent_build" = "true" ] || [ "$need_classes_build" = "true" ] || [ "
     # Clean target if doing complete rebuild
     if [ "$FORCE_CLEAN_BUILD" = "true" ]; then
         echo "🧹 Cleaning Maven target directory..."
-        mvn clean -q
+        mvn clean -q -Dmaven.repo.local="$MAVEN_REPO_LOCAL"
         
         # Remove instrumented Java if it exists
         if [ -d "target/galette/java" ]; then
@@ -122,13 +126,13 @@ if [ "$need_agent_build" = "true" ] || [ "$need_classes_build" = "true" ] || [ "
     
     # Step 1: Build galette-agent if needed
     if [ "$need_agent_build" = "true" ]; then
-        echo "🔨 Building galette-agent..."
-        (cd ../galette-agent && mvn clean package -q -DskipTests)
+        echo "🔨 Building and installing galette-agent..."
+        (cd ../galette-agent && mvn clean install -q -DskipTests -Dmaven.repo.local="$MAVEN_REPO_LOCAL")
         if [ $? -ne 0 ]; then
             echo "❌ Galette agent build failed!"
             exit 1
         fi
-        echo "✅ Galette agent built successfully"
+        echo "✅ Galette agent built and installed successfully"
     else
         echo "⚡ Using existing galette-agent JAR"
     fi
@@ -136,7 +140,7 @@ if [ "$need_agent_build" = "true" ] || [ "$need_classes_build" = "true" ] || [ "
     # Step 2: Compile Java classes if needed
     if [ "$need_classes_build" = "true" ]; then
         echo "🔨 Compiling Java classes..."
-        mvn compile -q
+        mvn compile -q -Dmaven.repo.local="$MAVEN_REPO_LOCAL"
         if [ $? -ne 0 ]; then
             echo "❌ Java compilation failed!"
             exit 1
@@ -149,7 +153,7 @@ if [ "$need_agent_build" = "true" ] || [ "$need_classes_build" = "true" ] || [ "
     # Step 3: Create instrumented Java if needed
     if [ "$need_java_build" = "true" ]; then
         echo "⚙️ Creating instrumented Java installation..."
-        mvn process-test-resources -q
+        mvn process-test-resources -q -Dmaven.repo.local="$MAVEN_REPO_LOCAL"
         if [ $? -ne 0 ]; then
             echo "❌ Instrumented Java creation failed!"
             exit 1
@@ -197,7 +201,7 @@ echo "   Galette Agent: $GALETTE_AGENT"
 # Generate classpath using Maven (only if needed)
 if [ ! -f cp.txt ] || [ $(find cp.txt -mmin +60 2>/dev/null | wc -l) -eq 1 ]; then
     echo "📋 Generating classpath..."
-    mvn dependency:build-classpath -Dmdep.outputFile=cp.txt -q
+    mvn dependency:build-classpath -Dmdep.outputFile=cp.txt -q -Dmaven.repo.local="$MAVEN_REPO_LOCAL"
     
     if [ ! -f cp.txt ]; then
         echo "❌ Failed to generate classpath file!"
