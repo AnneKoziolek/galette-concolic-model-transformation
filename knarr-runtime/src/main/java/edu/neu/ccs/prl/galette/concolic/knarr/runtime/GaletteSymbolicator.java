@@ -76,13 +76,17 @@ public class GaletteSymbolicator {
         }
 
         // Setup shutdown hook to clean up resources
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            try {
-                cleanup();
-            } catch (Exception e) {
-                System.err.println("Error during Symbolicator cleanup: " + e.getMessage());
+        // Use anonymous inner class instead of lambda to avoid instrumentation issues
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                try {
+                    cleanup();
+                } catch (Exception e) {
+                    System.err.println("Error during Symbolicator cleanup: " + e.getMessage());
+                }
             }
-        }));
+        });
     }
 
     /**

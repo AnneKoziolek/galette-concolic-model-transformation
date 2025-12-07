@@ -50,11 +50,17 @@ public class GaletteTransformer {
             INTERNAL_PACKAGE_PREFIX,
             // Exclude concolic exploration framework to avoid capturing its own comparisons
             "edu/neu/ccs/prl/galette/concolic/",
+            // Exclude example exploration code (ModelTransformationExample, etc.)
+            "edu/neu/ccs/prl/galette/examples/ModelTransformationExample",
             // Exclude example models (they contain their own logic comparisons)
             "edu/neu/ccs/prl/galette/examples/models/",
             // Exclude Green solver framework
             "za/ac/sun/cs/green/",
-            "edu/gmu/swe/greensolver/");
+            "edu/gmu/swe/greensolver/",
+            // Exclude knarr-runtime framework classes
+            "edu/neu/ccs/prl/galette/knarr/",
+            // Exclude PathConditionWrapper and related utilities
+            "edu/neu/ccs/prl/galette/PathConstraintAPI");
 
     private static TransformationCache cache;
 
@@ -73,6 +79,7 @@ public class GaletteTransformer {
         }
 
         TransformationCache currentCache = getCache();
+        // Skip excluded classes and module info
         if (exclusions.isExcluded(className) || AsmUtil.isSet(cr.getAccess(), Opcodes.ACC_MODULE)) {
             // Skip excluded classes and module info
             if (className.equals("edu/neu/ccs/prl/galette/examples/transformation/BrakeDiscTransformation")) {

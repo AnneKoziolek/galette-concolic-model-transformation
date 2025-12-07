@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.TreeSet;
 import za.ac.sun.cs.green.expr.Expression;
 
 /**
@@ -321,8 +322,13 @@ public class ModelTransformationExample {
             if (!discoveredThresholds.isEmpty()) {
                 System.out.println("🔍 Using discovered thresholds: " + discoveredThresholds);
                 for (Double threshold : discoveredThresholds) {
-                    boolean hasLowValue = exploredInputs.stream().anyMatch(v -> v <= threshold);
-                    boolean hasHighValue = exploredInputs.stream().anyMatch(v -> v > threshold);
+                    // Use traditional loops instead of lambdas to avoid instrumentation issues
+                    boolean hasLowValue = false;
+                    boolean hasHighValue = false;
+                    for (Double v : exploredInputs) {
+                        if (v <= threshold) hasLowValue = true;
+                        if (v > threshold) hasHighValue = true;
+                    }
 
                     System.out.println(
                             "  Threshold " + threshold + ": hasLow=" + hasLowValue + ", hasHigh=" + hasHighValue);
@@ -350,8 +356,13 @@ public class ModelTransformationExample {
             double maxInput = Collections.max(exploredInputs);
             double midpoint = (minInput + maxInput) / 2.0;
 
-            boolean hasLowValue = exploredInputs.stream().anyMatch(v -> v <= midpoint);
-            boolean hasHighValue = exploredInputs.stream().anyMatch(v -> v > midpoint);
+            // Use traditional loops instead of lambdas to avoid instrumentation issues
+            boolean hasLowValue = false;
+            boolean hasHighValue = false;
+            for (Double v : exploredInputs) {
+                if (v <= midpoint) hasLowValue = true;
+                if (v > midpoint) hasHighValue = true;
+            }
 
             if (!hasLowValue) {
                 return midpoint - 1.0;
@@ -414,7 +425,9 @@ public class ModelTransformationExample {
      * Count unique path constraints to understand path coverage.
      */
     private static int countUniqueConstraints(List<String> constraints) {
-        return (int) constraints.stream().distinct().count();
+        // Use traditional loop instead of stream to avoid instrumentation issues
+        Set<String> unique = new HashSet<>(constraints);
+        return unique.size();
     }
 
     /**
@@ -457,17 +470,15 @@ public class ModelTransformationExample {
      * Analyze inputs around a discovered threshold value.
      */
     private static void analyzeInputsAroundThreshold(List<Double> inputs, double threshold) {
-        List<Double> belowThreshold = inputs.stream()
-                .filter(v -> v <= threshold)
-                .sorted()
-                .distinct()
-                .collect(java.util.stream.Collectors.toList());
-
-        List<Double> aboveThreshold = inputs.stream()
-                .filter(v -> v > threshold)
-                .sorted()
-                .distinct()
-                .collect(java.util.stream.Collectors.toList());
+        // Use traditional loops instead of streams to avoid instrumentation issues
+        Set<Double> belowSet = new TreeSet<>();
+        Set<Double> aboveSet = new TreeSet<>();
+        for (Double v : inputs) {
+            if (v <= threshold) belowSet.add(v);
+            if (v > threshold) aboveSet.add(v);
+        }
+        List<Double> belowThreshold = new ArrayList<>(belowSet);
+        List<Double> aboveThreshold = new ArrayList<>(aboveSet);
 
         System.out.println("    Inputs ≤ " + threshold + ": " + belowThreshold);
         System.out.println("    Inputs > " + threshold + ": " + aboveThreshold);
