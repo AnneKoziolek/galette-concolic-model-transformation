@@ -21,8 +21,62 @@ echo ""
 # ============================================================================
 FORCE_CLEAN_BUILD=false        # Force complete clean rebuild (overrides everything)
 FORCE_REBUILD_AGENT=false      # Force rebuild galette-agent JAR only
-FORCE_REBUILD_CLASSES=true    # Force rebuild knarr-runtime Java classes only
-FORCE_REBUILD_JAVA=true        # Force rebuild instrumented Java installation only
+FORCE_REBUILD_CLASSES=false    # Force rebuild knarr-runtime Java classes only (intelligent detection by default)
+FORCE_REBUILD_JAVA=false       # Force rebuild instrumented Java installation only (intelligent detection by default)
+
+# Cleanup strategy for instrumented Java (when rebuilding)
+# Options: "safe" (rm -rf with verification), "aggressive" (find-based deletion), "nuclear" (rm -rf recursively)
+# "safe": Default, removes directory and verifies deletion before rebuild
+# "aggressive": Uses find to remove all files/dirs matching pattern (slower but thorough)
+# "nuclear": Recursively removes directory multiple times to handle edge cases
+CLEANUP_STRATEGY="safe"
+
+# Function to safely clean instrumented Java directory
+clean_instrumented_java() {
+    local java_dir="$1"
+    local strategy="${2:-safe}"
+    
+    if [ ! -d "$java_dir" ]; then
+        return 0  # Already doesn't exist
+    fi
+    
+    case "$strategy" in
+        "aggressive")
+            echo "   Using aggressive cleanup (find-based deletion)..."
+            find "$java_dir" -type f -delete 2>/dev/null
+            find "$java_dir" -type d -delete 2>/dev/null
+            rm -rf "$java_dir" 2>/dev/null
+            ;;
+        "nuclear")
+            echo "   Using nuclear cleanup (recursive deletion)..."
+            for i in {1..3}; do
+                rm -rf "$java_dir" 2>/dev/null
+                if [ ! -d "$java_dir" ]; then
+                    break
+                fi
+                sleep 0.5
+            done
+            ;;
+        *)
+            # "safe" strategy (default)
+            echo "   Using safe cleanup (rm -rf with verification)..."
+            rm -rf "$java_dir" 2>/dev/null
+            # Verify deletion
+            if [ -d "$java_dir" ]; then
+                echo "   ⚠️  Directory still exists after deletion, retrying..."
+                sleep 1
+                rm -rf "$java_dir" 2>/dev/null
+            fi
+            ;;
+    esac
+    
+    # Final verification
+    if [ -d "$java_dir" ]; then
+        echo "   ⚠️  Warning: Could not fully delete $java_dir (may cause rebuild issues)"
+        return 1
+    fi
+    return 0
+}
 
 # Function to check if compilation and instrumentation is needed
 needs_build() {
@@ -35,6 +89,11 @@ needs_build() {
     # Check individual force flags
     if [ "$FORCE_REBUILD_CLASSES" = "true" ]; then
         echo "🧹 FORCE_REBUILD_CLASSES enabled - rebuilding Java classes"
+        return 0  # true - needs build
+    fi
+    
+    if [ "$FORCE_REBUILD_JAVA" = "true" ]; then
+        echo "🧹 FORCE_REBUILD_JAVA enabled - rebuilding instrumented Java"
         return 0  # true - needs build
     fi
     
@@ -91,18 +150,13 @@ if needs_build; then
     # Handle FORCE_CLEAN_BUILD
     if [ "$FORCE_CLEAN_BUILD" = "true" ]; then
         echo "🧹 FORCE_CLEAN_BUILD enabled - removing all build artifacts"
-        if [ -d "target/galette/java" ]; then
-            echo "   Removing instrumented Java directory"
-            rm -rf target/galette/java
-        fi
+        clean_instrumented_java "target/galette/java" "$CLEANUP_STRATEGY"
         echo "🧹 Cleaning Maven target directory..."
         mvn clean -q
     elif [ "$FORCE_REBUILD_JAVA" = "true" ]; then
         # Only rebuild instrumented Java, keep classes
         echo "🧹 FORCE_REBUILD_JAVA enabled - removing only instrumented Java"
-        if [ -d "target/galette/java" ]; then
-            rm -rf target/galette/java
-        fi
+        clean_instrumented_java "target/galette/java" "$CLEANUP_STRATEGY"
         # Don't clean Maven, just let the maven plugin recreate the Java installation
     else
         # Normal rebuild - clean everything
@@ -117,8 +171,8 @@ if needs_build; then
     fi
     
     # Always create/recreate instrumented Java if we're in the build path
-    echo "⚙️ Creating instrumented Java installation..."
-    mvn process-test-resources -q
+    echo "⚙️ Creating instrumented Java installation via process-resources phase..."
+    mvn process-resources -q
     
     if [ $? -ne 0 ]; then
         echo "❌ Build failed!"
@@ -133,8 +187,19 @@ fi
 INSTRUMENTED_JAVA="target/galette/java"
 if [ ! -f "$INSTRUMENTED_JAVA/bin/java" ]; then
     echo "❌ Instrumented Java not found at: $INSTRUMENTED_JAVA"
-    echo "   Run 'mvn process-resources' to create instrumented Java"
-    exit 1
+    echo "   Building now with process-resources phase..."
+    mvn process-resources -q || {
+        echo "❌ Failed to build instrumented Java"
+        echo "   Troubleshooting options:"
+        echo "   1. Set CLEANUP_STRATEGY=\"aggressive\" or \"nuclear\" in the script"
+        echo "   2. Run 'FORCE_CLEAN_BUILD=true CLEANUP_STRATEGY=nuclear ./run-example.sh'"
+        exit 1
+    }
+    if [ ! -f "$INSTRUMENTED_JAVA/bin/java" ]; then
+        echo "❌ Instrumented Java creation failed"
+        exit 1
+    fi
+    echo "✅ Instrumented Java created successfully"
 fi
 
 # Find Galette agent JAR
