@@ -308,7 +308,6 @@ public class ModelTransformationExample {
                 System.out.println("🔍 generateAlternativeInput: Analyzing " + constraints.size() + " constraints");
                 for (Expression constraint : constraints) {
                     if (constraint != null) {
-                        System.out.println("  Constraint: " + constraint);
                         Set<Double> thresholds = SymbolicExecutionWrapper.extractThresholdsFromConstraint(constraint);
                         System.out.println("  Extracted thresholds: " + thresholds);
                         discoveredThresholds.addAll(thresholds);

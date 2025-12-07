@@ -7,6 +7,7 @@
 #   ./run-example.sh                    # Normal run (builds only if needed)
 #   
 # To force rebuild specific components, edit the flags below:
+#   FORCE_REBUILD_GREEN=true           # Rebuild only Green solver and dependencies
 #   FORCE_REBUILD_AGENT=true           # Rebuild only galette-agent JAR (for agent changes)
 #   FORCE_REBUILD_CLASSES=true         # Rebuild only knarr-runtime classes (for code changes)
 #   FORCE_REBUILD_JAVA=true            # Rebuild only instrumented Java (for JDK issues)
@@ -32,9 +33,10 @@ echo ""
 
 
 # Build configuration flags - set to true to force rebuild of specific components
-FORCE_CLEAN_BUILD=false         # Set to true for complete clean rebuild (overrides everything)
+FORCE_CLEAN_BUILD=false        # Set to true for complete clean rebuild (overrides all others)
+FORCE_REBUILD_GREEN=false      # Force rebuild Green solver and Galette modules dependencies
 FORCE_REBUILD_AGENT=false      # Force rebuild galette-agent JAR only
-FORCE_REBUILD_CLASSES=true    # Force rebuild knarr-runtime Java classes only
+FORCE_REBUILD_CLASSES=true     # Force rebuild knarr-runtime Java classes only
 FORCE_REBUILD_JAVA=false       # Force rebuild instrumented Java installation only
 
 # Use workspace-local Maven repository for isolation
@@ -98,6 +100,7 @@ needs_build() {
 need_agent_build=false
 need_classes_build=false
 need_java_build=false
+need_green_build=false
 
 # Check individual build requirements
     if [ "$FORCE_CLEAN_BUILD" = "true" ]; then
@@ -126,6 +129,12 @@ need_java_build=false
         need_classes_build=true
         need_java_build=true
 else
+    # Check if Green solver needs rebuild
+    if [ "$FORCE_REBUILD_GREEN" = "true" ]; then
+        need_green_build=true
+        echo "📦 Green solver rebuild needed"
+    fi
+    
     # Check if galette-agent needs rebuild
     if [ "$FORCE_REBUILD_AGENT" = "true" ] || [ ! -f "../galette-agent/target/galette-agent-1.0.0-SNAPSHOT.jar" ]; then
         need_agent_build=true
@@ -146,7 +155,7 @@ else
 fi
 
 # Perform builds in correct order
-if [ "$need_agent_build" = "true" ] || [ "$need_classes_build" = "true" ] || [ "$need_java_build" = "true" ]; then
+if [ "$need_green_build" = "true" ] || [ "$need_agent_build" = "true" ] || [ "$need_classes_build" = "true" ] || [ "$need_java_build" = "true" ]; then
     echo "📦 Building required components..."
     
     # Clean target if doing complete rebuild
@@ -159,6 +168,28 @@ if [ "$need_agent_build" = "true" ] || [ "$need_classes_build" = "true" ] || [ "
             echo "🧹 Removing existing instrumented Java directory"
             rm -rf target/galette/java
         fi
+    fi
+    
+    # Step 0: Build Green solver if needed
+    if [ "$need_green_build" = "true" ]; then
+        echo "🔨 Building and installing Green solver..."
+        (cd ../../green-solver/green && mvn clean install -q -DskipTests -U -Dmaven.repo.local="$MAVEN_REPO_ABSOLUTE" -Dlocal.repo.path="$MAVEN_REPO_ABSOLUTE")
+        if [ $? -ne 0 ]; then
+            echo "❌ Green solver build failed!"
+            exit 1
+        fi
+        echo "✅ Green solver installed"
+        
+        echo "🔨 Installing all Galette modules into local Maven repo..."
+        echo "   Building: Galette project modules"
+        (cd .. && mvn clean install -q -DskipTests -U -Dmaven.repo.local="$MAVEN_REPO_ABSOLUTE" -Dlocal.repo.path="$MAVEN_REPO_ABSOLUTE")
+        if [ $? -ne 0 ]; then
+            echo "❌ Galette modules build failed!"
+            exit 1
+        fi
+        echo "✅ Galette modules installed"
+    else
+        echo "⚡ Using existing Green solver and Galette modules"
     fi
     
     # Step 1: Build galette-agent if needed
