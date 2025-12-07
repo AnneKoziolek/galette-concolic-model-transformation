@@ -19,7 +19,7 @@ echo ""
 # ============================================================================
 # Build Configuration Constants
 # ============================================================================
-FORCE_CLEAN_BUILD=false        # Force complete clean rebuild (overrides everything)
+FORCE_CLEAN_BUILD=true        # Force complete clean rebuild (overrides everything)
 FORCE_REBUILD_AGENT=false      # Force rebuild galette-agent JAR only
 FORCE_REBUILD_CLASSES=true    # Force rebuild knarr-runtime Java classes only
 FORCE_REBUILD_JAVA=false        # Force rebuild instrumented Java installation only
