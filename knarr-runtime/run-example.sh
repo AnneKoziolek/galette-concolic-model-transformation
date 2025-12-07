@@ -32,9 +32,9 @@ echo ""
 
 
 # Build configuration flags - set to true to force rebuild of specific components
-FORCE_CLEAN_BUILD=true        # Set to true for complete clean rebuild (overrides everything)
+FORCE_CLEAN_BUILD=false        # Set to true for complete clean rebuild (overrides everything)
 FORCE_REBUILD_AGENT=false      # Force rebuild galette-agent JAR only
-FORCE_REBUILD_CLASSES=false    # Force rebuild knarr-runtime Java classes only
+FORCE_REBUILD_CLASSES=true    # Force rebuild knarr-runtime Java classes only
 FORCE_REBUILD_JAVA=false       # Force rebuild instrumented Java installation only
 
 # Use workspace-local Maven repository for isolation

@@ -421,7 +421,7 @@ public class SymbolicExecutionWrapper {
         if (expr instanceof RealConstant) {
             thresholds.add(((RealConstant) expr).getValue());
         } else if (expr instanceof IntConstant) {
-            thresholds.add((double) ((IntConstant) expr).getValue());
+            thresholds.add((double) ((IntConstant) expr).getValueLong());
         } else if (expr instanceof BinaryOperation) {
             BinaryOperation binOp = (BinaryOperation) expr;
             extractThresholdsRecursive(binOp.getOperand(0), thresholds);
