@@ -45,13 +45,22 @@ public class GaletteTransformer {
      * <p>
      * Non-null.
      */
-    private static final ExclusionList exclusions = new ExclusionList("java/lang/Object", INTERNAL_PACKAGE_PREFIX);
+    private static final ExclusionList exclusions = new ExclusionList(
+            "java/lang/Object",
+            INTERNAL_PACKAGE_PREFIX,
+            // Exclude concolic exploration framework to avoid capturing its own comparisons
+            "edu/neu/ccs/prl/galette/concolic/",
+            // Exclude example models (they contain their own logic comparisons)
+            "edu/neu/ccs/prl/galette/examples/models/",
+            // Exclude Green solver framework
+            "za/ac/sun/cs/green/",
+            "edu/gmu/swe/greensolver/");
 
     private static TransformationCache cache;
 
     public GaletteTransformer() {
         super();
-        //System.out.println("GaletteTransformer initialized");
+        // System.out.println("GaletteTransformer initialized");
     }
 
     public byte[] transform(byte[] classFileBuffer, boolean isHostedAnonymous) {

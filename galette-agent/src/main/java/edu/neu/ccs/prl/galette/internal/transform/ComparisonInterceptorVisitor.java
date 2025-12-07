@@ -31,7 +31,7 @@ public class ComparisonInterceptorVisitor extends ClassVisitor {
 
         public ComparisonMethodVisitor(MethodVisitor mv) {
             super(GaletteTransformer.ASM_VERSION, mv);
-            //System.out.println("🔍 ComparisonMethodVisitor created for method transformation");
+            // System.out.println("🔍 ComparisonMethodVisitor created for method transformation");
         }
 
         @Override

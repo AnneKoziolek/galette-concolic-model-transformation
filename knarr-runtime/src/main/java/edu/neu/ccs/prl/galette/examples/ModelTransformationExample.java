@@ -172,7 +172,7 @@ public class ModelTransformationExample {
         double initialThickness = 12.0;
 
         System.out.println("\n=== ITERATION " + (++iteration) + ": Initial Execution ===");
-        System.out.println("Starting concolic analysis with initial value = " + initialThickness );
+        System.out.println("Starting concolic analysis with initial value = " + initialThickness);
 
         // Execute with initial input and collect path constraints
         ConcolicResult initialResult = executeConcolic(source, initialThickness, "thickness_" + iteration);
