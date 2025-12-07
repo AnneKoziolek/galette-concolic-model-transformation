@@ -445,6 +445,8 @@ InputSolution solution = GaletteSymbolicator.solvePathCondition();
 generateTestsFromConstraints(solution);
 ```
 
+Enable full Green-based solving locally by setting `-Dgalette.useGreenSolver=true` (or `GALETTE_USE_GREEN_SOLVER=true`) when running the example; the runtime will configure Green with the Z3 Java service and use it to obtain concrete models for the collected path condition. When the flag is off, the fallback heuristic extractor remains active.
+
 ### Multiple Input Tracking
 Track multiple symbolic inputs simultaneously:
 
