@@ -129,11 +129,26 @@ public class GalettePathConstraintBridge {
 
     /**
      * Convert a value to a Green Expression.
+     * Values are concrete constants unless they have been tagged by Galette.
+     * Since PathUtils.Constraint stores concrete values (not tags), we need to check
+     * if the value came from a tagged source by checking if it's been marked as symbolic.
      */
     private static Expression convertValue(Object value, String variablePrefix) {
+        // Check if the value is tagged (symbolic) using Galette's Tainter
+        boolean isSymbolic = false;
+        try {
+            Class<?> tainterClass = Class.forName("edu.neu.ccs.prl.galette.internal.runtime.Tainter");
+            Method getTagMethod = tainterClass.getMethod("getTag", Object.class);
+            Object tag = getTagMethod.invoke(null, value);
+            isSymbolic = (tag != null);
+        } catch (Exception e) {
+            // Cannot check tags, fall back to heuristic
+            // Assume small integers are constants, large values might be symbolic
+        }
+
         if (value instanceof Integer) {
             int intVal = (Integer) value;
-            if (intVal >= -10 && intVal <= 10) {
+            if (!isSymbolic) {
                 return new IntConstant(intVal);
             } else {
                 return new IntVariable(
@@ -142,7 +157,7 @@ public class GalettePathConstraintBridge {
         } else if (value instanceof Long) {
             long longVal = (Long) value;
             int intVal = (int) Math.max(Integer.MIN_VALUE, Math.min(Integer.MAX_VALUE, longVal));
-            if (intVal >= -10 && intVal <= 10) {
+            if (!isSymbolic) {
                 return new IntConstant(intVal);
             } else {
                 return new IntVariable(
@@ -150,7 +165,8 @@ public class GalettePathConstraintBridge {
             }
         } else if (value instanceof Float || value instanceof Double) {
             double doubleVal = value instanceof Float ? (Float) value : (Double) value;
-            if (doubleVal >= -10.0 && doubleVal <= 10.0 && doubleVal == (int) doubleVal) {
+            if (!isSymbolic) {
+                // All concrete values are constants, regardless of magnitude
                 return new RealConstant(doubleVal);
             } else {
                 return new RealVariable(

@@ -51,7 +51,7 @@ public class GaletteTransformer {
 
     public GaletteTransformer() {
         super();
-        System.out.println("GaletteTransformer initialized");
+        //System.out.println("GaletteTransformer initialized");
     }
 
     public byte[] transform(byte[] classFileBuffer, boolean isHostedAnonymous) {

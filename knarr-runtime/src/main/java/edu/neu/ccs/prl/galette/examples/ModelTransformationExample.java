@@ -172,7 +172,7 @@ public class ModelTransformationExample {
         double initialThickness = 12.0;
 
         System.out.println("\n=== ITERATION " + (++iteration) + ": Initial Execution ===");
-        System.out.println("Starting concolic analysis with thickness = " + initialThickness + " mm");
+        System.out.println("Starting concolic analysis with initial value = " + initialThickness );
 
         // Execute with initial input and collect path constraints
         ConcolicResult initialResult = executeConcolic(source, initialThickness, "thickness_" + iteration);
@@ -266,11 +266,6 @@ public class ModelTransformationExample {
         System.out.println("ModelTransformationExample: Created symbolic value: " + label + " = " + thickness
                 + " (tag: " + (verifyTag != null ? verifyTag : "no tag") + ")");
 
-        // TEMPORARY: Direct comparison test to verify agent is working
-        System.out.println("🔧 Testing direct comparison in ModelTransformationExample...");
-        boolean testComparison = taggedThickness > 10.0;
-        System.out.println("🔧 Direct comparison result: " + taggedThickness + " > 10.0 = " + testComparison);
-
         // Execute the transformation with the TAGGED value (this is the key fix!)
         System.out.println("🔧 About to call BrakeDiscTransformation.transform() with tagged thickness");
         BrakeDiscTarget result = BrakeDiscTransformation.transform(source, taggedThickness);
@@ -302,35 +297,6 @@ public class ModelTransformationExample {
      * Generate alternative input values to explore different execution paths.
      */
     private static Double generateAlternativeInput(List<Double> exploredInputs, List<String> pathConstraints) {
-        // Try to use the constraint solver to generate alternative inputs
-        try {
-            GaletteSymbolicator.InputSolution solution = GaletteSymbolicator.solvePathCondition();
-            if (solution != null) {
-                // Try to extract thickness value from solution
-                String solutionStr = solution.toString();
-                if (solutionStr.contains("thickness")) {
-                    // Simple parsing - in a real implementation, this would be more sophisticated
-                    try {
-                        // Look for numeric values in the solution
-                        String[] parts = solutionStr.split("\\s+");
-                        for (String part : parts) {
-                            try {
-                                double value = Double.parseDouble(part);
-                                if (value > 0 && value < 100) { // Reasonable thickness range
-                                    return value;
-                                }
-                            } catch (NumberFormatException ignored) {
-                                // Continue searching
-                            }
-                        }
-                    } catch (Exception e) {
-                        System.out.println("Could not parse solver solution: " + e.getMessage());
-                    }
-                }
-            }
-        } catch (Exception e) {
-            System.out.println("Constraint solver not available: " + e.getMessage());
-        }
 
         // Fallback: Generate alternative inputs based on analysis of explored inputs
         // Use dynamic threshold discovery from path constraints
@@ -339,23 +305,34 @@ public class ModelTransformationExample {
             Set<Double> discoveredThresholds = new HashSet<>();
             if (pc != null && !pc.isEmpty()) {
                 List<Expression> constraints = pc.getConstraints();
+                System.out.println("🔍 generateAlternativeInput: Analyzing " + constraints.size() + " constraints");
                 for (Expression constraint : constraints) {
                     if (constraint != null) {
-                        discoveredThresholds.addAll(
-                                SymbolicExecutionWrapper.extractThresholdsFromConstraint(constraint));
+                        System.out.println("  Constraint: " + constraint);
+                        Set<Double> thresholds = SymbolicExecutionWrapper.extractThresholdsFromConstraint(constraint);
+                        System.out.println("  Extracted thresholds: " + thresholds);
+                        discoveredThresholds.addAll(thresholds);
                     }
                 }
+            } else {
+                System.out.println("🔍 generateAlternativeInput: No path constraints available (pc=" + pc + ")");
             }
 
             // If we found thresholds from constraints, use them
             if (!discoveredThresholds.isEmpty()) {
+                System.out.println("🔍 Using discovered thresholds: " + discoveredThresholds);
                 for (Double threshold : discoveredThresholds) {
                     boolean hasLowValue = exploredInputs.stream().anyMatch(v -> v <= threshold);
                     boolean hasHighValue = exploredInputs.stream().anyMatch(v -> v > threshold);
 
+                    System.out.println(
+                            "  Threshold " + threshold + ": hasLow=" + hasLowValue + ", hasHigh=" + hasHighValue);
+
                     if (!hasLowValue) {
+                        System.out.println("  → Generating value " + (threshold - 1.0) + " for testing ≤ " + threshold);
                         return threshold - 1.0; // Test the thickness <= threshold path
                     } else if (!hasHighValue) {
+                        System.out.println("  → Generating value " + (threshold + 1.0) + " for testing > " + threshold);
                         return threshold + 1.0; // Test the thickness > threshold path
                     }
                 }
