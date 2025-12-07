@@ -21,8 +21,9 @@ echo ""
 # ============================================================================
 FORCE_CLEAN_BUILD=false        # Force complete clean rebuild (overrides everything)
 FORCE_REBUILD_AGENT=false      # Force rebuild galette-agent JAR only
-FORCE_REBUILD_CLASSES=false    # Force rebuild knarr-runtime Java classes only
+FORCE_REBUILD_CLASSES=true    # Force rebuild knarr-runtime Java classes only
 FORCE_REBUILD_JAVA=false        # Force rebuild instrumented Java installation only
+USE_GREEN_SOLVER=true         # Enable Green-based solving (true/false) passed to JVM as -Dgalette.useGreenSolver
 
 # Function to check if compilation and instrumentation is needed
 needs_build() {
@@ -188,6 +189,7 @@ echo "🔍 Debug Information:"
 echo "   Command: $INSTRUMENTED_JAVA/bin/java"
 echo "   Agent arguments: -Xbootclasspath/a:$GALETTE_AGENT -javaagent:$GALETTE_AGENT"
 echo "   Galette cache directory: target/galette/cache"
+echo "   Green solver enabled: $USE_GREEN_SOLVER"
 
 # Create cache directory if it doesn't exist
 mkdir -p target/galette/cache
@@ -200,6 +202,8 @@ mkdir -p target/galette/cache
   -Dgalette.coverage=true \
   -Dsymbolic.execution.debug=true \
   -Dgalette.debug=true \
+  -DDEBUG=true \
+  -Dgalette.useGreenSolver=$USE_GREEN_SOLVER \
   -verbose:javaagent \
   edu.neu.ccs.prl.galette.examples.ModelTransformationExample "$@"
 

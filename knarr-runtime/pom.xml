@@ -21,6 +21,13 @@
             <artifactId>galette-agent</artifactId>
             <version>${project.version}</version>
         </dependency>
+
+        <!-- Z3 turnkey for Green solver (Java bindings + native bundled) -->
+        <dependency>
+            <groupId>io.github.tudo-aqua</groupId>
+            <artifactId>z3-turnkey</artifactId>
+            <version>4.8.14</version>
+        </dependency>
         
         <!-- Green constraint solver dependency -->
         <dependency>
