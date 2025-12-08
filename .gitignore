@@ -50,7 +50,10 @@ lastClass.txt
 
 # Python virtual environment
 /venv/*
+
+# Others
 /supplemental/*.tar
 /supplemental/*.tgz
 migration goals e-mail.txt
 migration-goals-e-mail.txt
+*:Zone.Identifier
