@@ -33,11 +33,11 @@ echo ""
 
 
 # Build configuration flags - set to true to force rebuild of specific components
-FORCE_CLEAN_BUILD=false        # Set to true for complete clean rebuild (overrides all others)
+FORCE_CLEAN_BUILD=true        # Set to true for complete clean rebuild (overrides all others)
 FORCE_REBUILD_GREEN=false       # Force rebuild Green solver and Galette modules dependencies
-FORCE_REBUILD_AGENT=false       # Force rebuild galette-agent JAR only
+FORCE_REBUILD_AGENT=true       # Force rebuild galette-agent JAR only
 FORCE_REBUILD_CLASSES=true     # Force rebuild knarr-runtime Java classes only
-FORCE_REBUILD_JAVA=false       # Force rebuild instrumented Java installation only
+FORCE_REBUILD_JAVA=true       # Force rebuild instrumented Java installation only
 
 # Use workspace-local Maven repository for isolation
 MAVEN_REPO_LOCAL="../.m2repo"
@@ -310,6 +310,8 @@ mkdir -p target/galette/cache
   -Dgalette.debug=true \
   -Dgalette.concolic.interception.enabled=true \
   -Dgalette.concolic.interception.debug=true \
+  -Dgalette.useGreenSolver=true \
+  -DDEBUG=true \
   -verbose:javaagent \
   edu.neu.ccs.prl.galette.examples.ModelTransformationExample "$@"
 

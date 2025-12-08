@@ -68,6 +68,51 @@ public class PathUtils {
     }
 
     /**
+     * Add a user-defined symbolic label to track.
+     * Delegates to the galette-agent's PathUtils at runtime using reflection
+     * to avoid compile-time dependency issues.
+     */
+    public static void addUserSymbolicLabel(String label) {
+        try {
+            Class<?> agentPathUtils = Class.forName("edu.neu.ccs.prl.galette.internal.runtime.PathUtils");
+            java.lang.reflect.Method method = agentPathUtils.getMethod("addUserSymbolicLabel", Object.class);
+            method.invoke(null, label);
+        } catch (ClassNotFoundException e) {
+            // Galette agent not loaded - this is expected during standalone testing
+            if (Boolean.getBoolean("DEBUG")) {
+                System.out.println("Note: Galette agent not loaded, skipping addUserSymbolicLabel for: " + label);
+            }
+        } catch (Exception e) {
+            // Other reflection errors - log and continue
+            if (Boolean.getBoolean("DEBUG")) {
+                System.err.println("Warning: Could not call addUserSymbolicLabel: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Clear all user-defined symbolic labels.
+     * Delegates to the galette-agent's PathUtils at runtime using reflection.
+     */
+    public static void clearUserSymbolicLabels() {
+        try {
+            Class<?> agentPathUtils = Class.forName("edu.neu.ccs.prl.galette.internal.runtime.PathUtils");
+            java.lang.reflect.Method method = agentPathUtils.getMethod("clearUserSymbolicLabels");
+            method.invoke(null);
+        } catch (ClassNotFoundException e) {
+            // Galette agent not loaded - this is expected during standalone testing
+            if (Boolean.getBoolean("DEBUG")) {
+                System.out.println("Note: Galette agent not loaded, skipping clearUserSymbolicLabels");
+            }
+        } catch (Exception e) {
+            // Other reflection errors - log and continue
+            if (Boolean.getBoolean("DEBUG")) {
+                System.err.println("Warning: Could not call clearUserSymbolicLabels: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
      * Check label validity and initialize JPF if needed.
      *
      * @param label The label to check

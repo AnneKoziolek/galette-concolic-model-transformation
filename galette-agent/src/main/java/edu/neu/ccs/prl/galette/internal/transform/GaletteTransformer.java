@@ -60,7 +60,8 @@ public class GaletteTransformer {
             // Exclude knarr-runtime framework classes
             "edu/neu/ccs/prl/galette/knarr/",
             // Exclude PathConditionWrapper and related utilities
-            "edu/neu/ccs/prl/galette/PathConstraintAPI");
+            "edu/neu/ccs/prl/galette/PathConstraintAPI",
+            "java/util/Logging");
 
     private static TransformationCache cache;
 
