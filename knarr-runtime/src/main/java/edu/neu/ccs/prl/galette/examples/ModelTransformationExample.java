@@ -10,8 +10,10 @@ import edu.neu.ccs.prl.galette.examples.transformation.SymbolicExecutionWrapper;
 import edu.neu.ccs.prl.galette.internal.runtime.Tag;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.TreeSet;
@@ -166,6 +168,7 @@ public class ModelTransformationExample {
 
         List<Double> exploredInputs = new ArrayList<>();
         List<String> pathConstraints = new ArrayList<>();
+        BranchCoverageTracker branchTracker = new BranchCoverageTracker();
         int maxIterations = 10; // Prevent infinite loops
         int iteration = 0;
 
@@ -179,6 +182,7 @@ public class ModelTransformationExample {
         ConcolicResult initialResult = executeConcolic(source, initialThickness, "thickness_" + iteration);
         exploredInputs.add(initialThickness);
         pathConstraints.add(initialResult.pathConstraint);
+        branchTracker.analyzeConstraint(initialResult.pathConstraint, initialThickness);
 
         System.out.println("Initial path constraint: " + initialResult.pathConstraint);
         System.out.println("Result: additionalStiffness = " + initialResult.result.hasAdditionalStiffness());
@@ -187,8 +191,16 @@ public class ModelTransformationExample {
         while (iteration < maxIterations) {
             System.out.println("\n=== Generating Alternative Inputs ===");
 
-            // Try to generate input for the opposite path
-            Double alternativeInput = generateAlternativeInput(exploredInputs, pathConstraints);
+            // Check if exploration is complete (all branches covered)
+            if (branchTracker.isExplorationComplete()) {
+                System.out.println("✅ All branches explored! Exploration complete.");
+                System.out.println(branchTracker.getSummary());
+                break;
+            }
+
+            // Try to generate input for unexplored branches
+            Double alternativeInput =
+                    generateAlternativeInputWithTracker(exploredInputs, pathConstraints, branchTracker);
 
             if (alternativeInput == null) {
                 System.out.println("No more alternative paths found. Exploration complete.");
@@ -208,6 +220,7 @@ public class ModelTransformationExample {
             ConcolicResult altResult = executeConcolic(source, alternativeInput, "thickness_" + iteration);
             exploredInputs.add(alternativeInput);
             pathConstraints.add(altResult.pathConstraint);
+            branchTracker.analyzeConstraint(altResult.pathConstraint, alternativeInput);
 
             System.out.println("Path constraint: " + altResult.pathConstraint);
             System.out.println("Result: additionalStiffness = " + altResult.result.hasAdditionalStiffness());
@@ -244,6 +257,186 @@ public class ModelTransformationExample {
         ConcolicResult(BrakeDiscTarget result, String pathConstraint, boolean hasConstraints) {
             this.result = result;
             this.pathConstraint = pathConstraint;
+        }
+    }
+
+    /**
+     * Tracks which branches (below/above threshold) have been explored for each comparison threshold.
+     * This enables proper detection of exploration completeness.
+     */
+    private static class BranchCoverageTracker {
+        // Maps threshold value to a pair of booleans: [belowExplored, aboveExplored]
+        private final Map<Double, boolean[]> thresholdCoverage = new HashMap<>();
+
+        /**
+         * Analyze a path constraint string to extract threshold comparisons and their directions.
+         * Parses constraints like "12.0<80.0" or "81.0>80.0" to determine which branch was taken.
+         */
+        void analyzeConstraint(String constraintStr, double inputValue) {
+            if (constraintStr == null || constraintStr.isEmpty() || constraintStr.equals("no constraints")) {
+                return;
+            }
+
+            // Parse individual comparisons from the constraint string
+            // Format: "12.0<80.0" or "(12.0<80.0)&&(81.0>80.0)" etc.
+            analyzeComparisonsInConstraint(constraintStr);
+        }
+
+        /**
+         * Parse comparison expressions to identify threshold values and which branches are covered.
+         */
+        private void analyzeComparisonsInConstraint(String constraintStr) {
+            // Split by && to get individual comparisons
+            String[] parts = constraintStr.split("&&");
+
+            for (String part : parts) {
+                // Clean up parentheses
+                String cleanPart = part.replace("(", "").replace(")", "").trim();
+
+                // Parse comparisons like "12.0<80.0" or "81.0>80.0"
+                parseComparison(cleanPart);
+            }
+        }
+
+        /**
+         * Parse a single comparison like "12.0<80.0" or "81.0>80.0"
+         */
+        private void parseComparison(String comparison) {
+            // Try to match patterns: value < threshold, value > threshold, etc.
+            String[] ltParts = comparison.split("<");
+            String[] gtParts = comparison.split(">");
+            String[] leParts = comparison.split("<=");
+            String[] geParts = comparison.split(">=");
+
+            Double leftValue = null;
+            Double rightValue = null;
+            boolean isLessThan = false;
+            boolean isGreaterThan = false;
+
+            if (leParts.length == 2) {
+                leftValue = tryParseDouble(leParts[0]);
+                rightValue = tryParseDouble(leParts[1]);
+                isLessThan = true;
+            } else if (geParts.length == 2) {
+                leftValue = tryParseDouble(geParts[0]);
+                rightValue = tryParseDouble(geParts[1]);
+                isGreaterThan = true;
+            } else if (ltParts.length == 2) {
+                leftValue = tryParseDouble(ltParts[0]);
+                rightValue = tryParseDouble(ltParts[1]);
+                isLessThan = true;
+            } else if (gtParts.length == 2) {
+                leftValue = tryParseDouble(gtParts[0]);
+                rightValue = tryParseDouble(gtParts[1]);
+                isGreaterThan = true;
+            }
+
+            if (leftValue != null && rightValue != null) {
+                // The threshold is typically the constant being compared against (rightValue)
+                // leftValue is typically the symbolic input value
+                recordBranchCoverage(rightValue, isLessThan, isGreaterThan);
+            }
+        }
+
+        private Double tryParseDouble(String s) {
+            try {
+                return Double.parseDouble(s.trim());
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+
+        /**
+         * Record that a particular branch direction was taken for a threshold.
+         * NOTE: Avoiding computeIfAbsent with lambda - Galette cannot instrument lambdas properly.
+         */
+        private void recordBranchCoverage(double threshold, boolean isLessThan, boolean isGreaterThan) {
+            // Avoid using computeIfAbsent with lambda - Galette cannot instrument lambdas properly
+            boolean[] coverage = thresholdCoverage.get(threshold);
+            if (coverage == null) {
+                coverage = new boolean[2];
+                thresholdCoverage.put(threshold, coverage);
+            }
+
+            if (isLessThan) {
+                coverage[0] = true; // Below/less-than branch explored
+            }
+            if (isGreaterThan) {
+                coverage[1] = true; // Above/greater-than branch explored
+            }
+        }
+
+        /**
+         * Check if all discovered thresholds have both branches explored.
+         */
+        boolean isExplorationComplete() {
+            if (thresholdCoverage.isEmpty()) {
+                return false; // No thresholds discovered yet
+            }
+
+            for (Map.Entry<Double, boolean[]> entry : thresholdCoverage.entrySet()) {
+                boolean[] coverage = entry.getValue();
+                if (!coverage[0] || !coverage[1]) {
+                    return false; // This threshold has unexplored branches
+                }
+            }
+            return true; // All thresholds have both branches covered
+        }
+
+        /**
+         * Get a threshold that still has unexplored branches.
+         * Returns null if all branches are explored.
+         */
+        Double getUnexploredThreshold() {
+            for (Map.Entry<Double, boolean[]> entry : thresholdCoverage.entrySet()) {
+                boolean[] coverage = entry.getValue();
+                if (!coverage[0] || !coverage[1]) {
+                    return entry.getKey();
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine which branch direction is unexplored for a given threshold.
+         * Returns < 0 for below, > 0 for above, 0 if both explored.
+         */
+        int getUnexploredDirection(double threshold) {
+            boolean[] coverage = thresholdCoverage.get(threshold);
+            if (coverage == null) {
+                return -1; // Default to exploring below first
+            }
+            if (!coverage[0]) {
+                return -1; // Below branch unexplored
+            }
+            if (!coverage[1]) {
+                return 1; // Above branch unexplored
+            }
+            return 0; // Both explored
+        }
+
+        /**
+         * Get all discovered thresholds.
+         */
+        Set<Double> getDiscoveredThresholds() {
+            return new HashSet<>(thresholdCoverage.keySet());
+        }
+
+        /**
+         * Get a summary of branch coverage.
+         */
+        String getSummary() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("Branch Coverage:\n");
+            for (Map.Entry<Double, boolean[]> entry : thresholdCoverage.entrySet()) {
+                double threshold = entry.getKey();
+                boolean[] coverage = entry.getValue();
+                sb.append("  Threshold ").append(threshold).append(": ");
+                sb.append("below=").append(coverage[0] ? "✓" : "✗");
+                sb.append(", above=").append(coverage[1] ? "✓" : "✗");
+                sb.append("\n");
+            }
+            return sb.toString();
         }
     }
 
@@ -372,6 +565,57 @@ public class ModelTransformationExample {
         }
 
         return null; // No more obvious alternatives
+    }
+
+    /**
+     * Generate alternative input using the branch coverage tracker for intelligent exploration.
+     * This method focuses on generating inputs that will explore unexplored branches,
+     * stopping when all branches are covered.
+     */
+    private static Double generateAlternativeInputWithTracker(
+            List<Double> exploredInputs, List<String> pathConstraints, BranchCoverageTracker tracker) {
+
+        // First, check if exploration is already complete
+        if (tracker.isExplorationComplete()) {
+            System.out.println("🎯 Branch tracker: All branches already explored");
+            return null;
+        }
+
+        // Get thresholds that have unexplored branches
+        Set<Double> thresholds = tracker.getDiscoveredThresholds();
+        System.out.println("🔍 Branch tracker: Discovered thresholds: " + thresholds);
+
+        for (Double threshold : thresholds) {
+            int direction = tracker.getUnexploredDirection(threshold);
+
+            if (direction < 0) {
+                // Need to explore below threshold
+                double candidate = threshold - 1.0;
+                System.out.println("  → Threshold " + threshold + ": need below branch, generating " + candidate);
+                if (!exploredInputs.contains(candidate)) {
+                    return candidate;
+                }
+            } else if (direction > 0) {
+                // Need to explore above threshold
+                double candidate = threshold + 1.0;
+                System.out.println("  → Threshold " + threshold + ": need above branch, generating " + candidate);
+                if (!exploredInputs.contains(candidate)) {
+                    return candidate;
+                }
+            } else {
+                System.out.println("  → Threshold " + threshold + ": both branches explored ✓");
+            }
+        }
+
+        // If no thresholds found yet, fall back to the original method
+        if (thresholds.isEmpty()) {
+            System.out.println("🔍 No thresholds discovered yet, using fallback method");
+            return generateAlternativeInput(exploredInputs, pathConstraints);
+        }
+
+        // All discovered thresholds have both branches explored
+        System.out.println("🎯 All discovered threshold branches have been explored");
+        return null;
     }
 
     /**

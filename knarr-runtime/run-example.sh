@@ -34,8 +34,8 @@ echo ""
 
 # Build configuration flags - set to true to force rebuild of specific components
 FORCE_CLEAN_BUILD=false        # Set to true for complete clean rebuild (overrides all others)
-FORCE_REBUILD_GREEN=true       # Force rebuild Green solver and Galette modules dependencies
-FORCE_REBUILD_AGENT=true       # Force rebuild galette-agent JAR only
+FORCE_REBUILD_GREEN=false       # Force rebuild Green solver and Galette modules dependencies
+FORCE_REBUILD_AGENT=false       # Force rebuild galette-agent JAR only
 FORCE_REBUILD_CLASSES=true     # Force rebuild knarr-runtime Java classes only
 FORCE_REBUILD_JAVA=false       # Force rebuild instrumented Java installation only
 
