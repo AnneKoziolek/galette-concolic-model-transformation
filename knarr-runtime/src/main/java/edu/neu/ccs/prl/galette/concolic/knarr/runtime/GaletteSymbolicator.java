@@ -51,13 +51,31 @@ public class GaletteSymbolicator {
      */
     private static final boolean USE_GREEN_SOLVER;
 
+    /**
+     * Toggle to use remote GreenServer via sockets instead of in-process Green.
+     * This avoids instrumentation conflicts with Green/Z3 classes.
+     * Can be set via -Dgalette.useGreenServer=true or env GALETTE_USE_GREEN_SERVER=true.
+     */
+    private static final boolean USE_GREEN_SERVER;
+
     static {
         // Avoid lambda - use explicit initialization
         String sysProp = System.getProperty("galette.useGreenSolver");
         String envVar = System.getenv("GALETTE_USE_GREEN_SOLVER");
         String value = sysProp != null ? sysProp : (envVar != null ? envVar : "false");
         USE_GREEN_SOLVER = Boolean.parseBoolean(value);
+
+        // Check for Green server mode
+        String serverSysProp = System.getProperty("galette.useGreenServer");
+        String serverEnvVar = System.getenv("GALETTE_USE_GREEN_SERVER");
+        String serverValue = serverSysProp != null ? serverSysProp : (serverEnvVar != null ? serverEnvVar : "true");
+        USE_GREEN_SERVER = Boolean.parseBoolean(serverValue);
     }
+
+    /**
+     * Cached GreenSocketClient for remote solver.
+     */
+    private static volatile GreenSocketClient greenSocketClient;
 
     /**
      * Lazy initialized Green solver instance for model queries.
@@ -335,6 +353,9 @@ public class GaletteSymbolicator {
     /**
      * Attempt solving via Green SAT checker; validates generated values against constraints.
      * Falls back to heuristic if not enabled or if Green is unavailable.
+     *
+     * When USE_GREEN_SERVER is true, this uses a remote GreenServer via sockets
+     * to avoid instrumentation conflicts with Green/Z3 classes.
      */
     private static InputSolution solveWithGreen(Expression constraint) {
         if (!USE_GREEN_SOLVER) {
@@ -349,6 +370,92 @@ public class GaletteSymbolicator {
             return null;
         }
 
+        // Try remote solver first (avoids instrumentation conflicts)
+        if (USE_GREEN_SERVER) {
+            return solveWithGreenServer(constraint);
+        }
+
+        // Fall back to in-process Green solver
+        return solveWithGreenInProcess(constraint);
+    }
+
+    /**
+     * Solve constraint using remote GreenServer via sockets.
+     * This approach runs Green/Z3 in a separate non-instrumented JVM.
+     */
+    private static InputSolution solveWithGreenServer(Expression constraint) {
+        try {
+            if (DEBUG) {
+                System.out.println("[GreenServer] Checking constraint satisfiability: " + constraint);
+            }
+
+            // Get or create socket client
+            if (greenSocketClient == null || !greenSocketClient.isConnected()) {
+                synchronized (GREEN_INIT_LOCK) {
+                    if (greenSocketClient == null || !greenSocketClient.isConnected()) {
+                        greenSocketClient = new GreenSocketClient();
+                        if (!greenSocketClient.connect()) {
+                            System.err.println(
+                                    "[GreenServer] Failed to connect to server - falling back to in-process");
+                            return solveWithGreenInProcess(constraint);
+                        }
+                        if (DEBUG) {
+                            System.out.println("[GreenServer] Connected to solver server");
+                        }
+                    }
+                }
+            }
+
+            Boolean isSatisfiable = greenSocketClient.isSatisfiable(constraint);
+
+            if (DEBUG) {
+                System.out.println(
+                        "[GreenServer] SAT result: " + (isSatisfiable != null ? isSatisfiable : "null/error"));
+            }
+
+            if (isSatisfiable != null && isSatisfiable) {
+                // Constraint is satisfiable - generate a solution
+                InputSolution solution = new InputSolution();
+                solution.setValue("satisfiable", "YES");
+                solution.setValue("solver", "green-server");
+
+                // Generate values using heuristic
+                Map<String, Object> alternatives = generateAlternativeValues(constraint);
+                Set<Map.Entry<String, Object>> entries = alternatives.entrySet();
+                for (Map.Entry<String, Object> entry : entries) {
+                    solution.setValue(entry.getKey(), entry.getValue());
+                }
+
+                if (DEBUG) {
+                    System.out.println("[GreenServer] Generated solution: " + solution);
+                }
+                return solution;
+            } else if (isSatisfiable == null) {
+                if (DEBUG) {
+                    System.out.println("[GreenServer] SAT returned null (error or connection issue)");
+                }
+            } else {
+                if (DEBUG) {
+                    System.out.println("[GreenServer] Constraint is unsatisfiable");
+                }
+            }
+
+            return null;
+        } catch (Exception e) {
+            System.err.println("[GreenServer] Error: " + e.getMessage());
+            if (DEBUG) {
+                e.printStackTrace();
+            }
+            // Try in-process fallback
+            return solveWithGreenInProcess(constraint);
+        }
+    }
+
+    /**
+     * Solve constraint using in-process Green solver.
+     * NOTE: This may fail if Green/Z3 classes get instrumented by Galette.
+     */
+    private static InputSolution solveWithGreenInProcess(Expression constraint) {
         Green solver = ensureGreenSolver();
         if (solver == null) {
             return null; // misconfiguration or missing solver
@@ -779,6 +886,11 @@ public class GaletteSymbolicator {
         try {
             if (serverConnection != null && !serverConnection.isClosed()) {
                 serverConnection.close();
+            }
+            // Close GreenServer socket client
+            if (greenSocketClient != null) {
+                greenSocketClient.close();
+                greenSocketClient = null;
             }
             reset();
         } catch (IOException e) {
