@@ -35,9 +35,9 @@ echo ""
 # Build configuration flags - set to true to force rebuild of specific components
 FORCE_CLEAN_BUILD=false        # Set to true for complete clean rebuild (overrides all others)
 FORCE_REBUILD_GREEN=false       # Force rebuild Green solver and Galette modules dependencies
-FORCE_REBUILD_AGENT=true       # Force rebuild galette-agent JAR only
+FORCE_REBUILD_AGENT=false       # Force rebuild galette-agent JAR only
 FORCE_REBUILD_CLASSES=false     # Force rebuild knarr-runtime Java classes only
-FORCE_REBUILD_JAVA=true       # Force rebuild instrumented Java installation only
+FORCE_REBUILD_JAVA=false       # Force rebuild instrumented Java installation only
 
 # Use workspace-local Maven repository for isolation
 MAVEN_REPO_LOCAL="../.m2repo"
@@ -403,6 +403,7 @@ echo "   Galette cache directory: target/galette/cache"
 mkdir -p target/galette/cache
 
 "$INSTRUMENTED_JAVA/bin/java" \
+  -Xms512m -Xmx4g -XX:NewSize=512m \
   -cp "$CP" \
   -Xbootclasspath/a:"$GALETTE_AGENT" \
   -javaagent:"$GALETTE_AGENT" \

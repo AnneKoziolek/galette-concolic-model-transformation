@@ -134,46 +134,41 @@ public class GalettePathConstraintBridge {
      * if the value came from a tagged source by checking if it's been marked as symbolic.
      */
     private static Expression convertValue(Object value, String variablePrefix) {
-        // Check if the value is tagged (symbolic) using Galette's Tainter
-        boolean isSymbolic = false;
-        try {
-            Class<?> tainterClass = Class.forName("edu.neu.ccs.prl.galette.internal.runtime.Tainter");
-            Method getTagMethod = tainterClass.getMethod("getTag", Object.class);
-            Object tag = getTagMethod.invoke(null, value);
-            isSymbolic = (tag != null);
-        } catch (Exception e) {
-            // Cannot check tags, fall back to heuristic
-            // Assume small integers are constants, large values might be symbolic
-        }
+        // Try to get the symbolic variable name for this value
+        String variableName = null;
 
-        if (value instanceof Integer) {
-            int intVal = (Integer) value;
-            if (!isSymbolic) {
-                return new IntConstant(intVal);
-            } else {
-                return new IntVariable(
-                        variablePrefix + "_" + Math.abs(intVal % 1000), Integer.MIN_VALUE, Integer.MAX_VALUE);
+        if (value instanceof Double || value instanceof Float) {
+            double doubleVal = value instanceof Float ? (Float) value : (Double) value;
+
+            // Try to get the variable name from ModelTransformationExample
+            try {
+                Class<?> exampleClass = Class.forName("edu.neu.ccs.prl.galette.examples.ModelTransformationExample");
+                Method getNameMethod = exampleClass.getMethod("getSymbolicVariableName", double.class);
+                variableName = (String) getNameMethod.invoke(null, doubleVal);
+            } catch (Exception e) {
+                // Class or method not available - continue without variable name
             }
+
+            if (variableName != null) {
+                // This is a symbolic value with a known variable name
+                System.out.println("🎯 Found symbolic variable: " + variableName + " for value " + doubleVal);
+                return new RealVariable(variableName, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY);
+            } else {
+                // This is a concrete constant
+                return new RealConstant(doubleVal);
+            }
+        } else if (value instanceof Integer) {
+            int intVal = (Integer) value;
+
+            // For now, integers are treated as constants
+            // Could extend this to track integer symbolic values if needed
+            return new IntConstant(intVal);
         } else if (value instanceof Long) {
             long longVal = (Long) value;
             int intVal = (int) Math.max(Integer.MIN_VALUE, Math.min(Integer.MAX_VALUE, longVal));
-            if (!isSymbolic) {
-                return new IntConstant(intVal);
-            } else {
-                return new IntVariable(
-                        variablePrefix + "_" + Math.abs(intVal % 1000), Integer.MIN_VALUE, Integer.MAX_VALUE);
-            }
-        } else if (value instanceof Float || value instanceof Double) {
-            double doubleVal = value instanceof Float ? (Float) value : (Double) value;
-            if (!isSymbolic) {
-                // All concrete values are constants, regardless of magnitude
-                return new RealConstant(doubleVal);
-            } else {
-                return new RealVariable(
-                        variablePrefix + "_" + Math.abs((int) (doubleVal * 100) % 1000),
-                        Double.NEGATIVE_INFINITY,
-                        Double.POSITIVE_INFINITY);
-            }
+
+            // For now, longs are treated as constants
+            return new IntConstant(intVal);
         }
 
         return null;
