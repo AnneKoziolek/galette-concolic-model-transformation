@@ -1,8 +1,13 @@
 #!/bin/bash
 
-# Script to run the ModelTransformationExample with Galette instrumentation
-# and an EXTERNAL GreenServer process for constraint solving.
-# This avoids Galette instrumenting the Green/Z3 bytecode.
+# Script to run the ModelTransformationExample with an EXTERNAL GreenServer
+# process for constraint solving. This avoids Galette instrumenting the
+# Green/Z3 bytecode by running the solver in a separate non-instrumented JVM.
+#
+# Configuration Options (see below):
+#   USE_INSTRUMENTED_JAVA - Enable/disable Galette bytecode instrumentation
+#   USE_GREEN_SOLVER      - Enable/disable Green constraint solver
+#   USE_EXTERNAL_GREEN_SERVER - Use external GreenServer (recommended)
 
 set -e  # Exit on any error
 
@@ -28,6 +33,9 @@ FORCE_REBUILD_JAVA=false       # Force rebuild instrumented Java installation on
 # ============================================================================
 # Runtime Configuration
 # ============================================================================
+USE_INSTRUMENTED_JAVA=true     # Use Galette-instrumented Java for constraint collection via comparison interception
+                               # When true: Uses target/galette/java (generates if missing), enables -javaagent
+                               # When false: Uses regular JAVA_HOME, no bytecode instrumentation
 USE_GREEN_SOLVER=true          # Enable Green solver integration
 USE_EXTERNAL_GREEN_SERVER=true # Use external GreenServer process
 
@@ -234,7 +242,7 @@ needs_build() {
         return 0
     fi
 
-    if [ "$FORCE_REBUILD_JAVA" = "true" ]; then
+    if [ "$FORCE_REBUILD_JAVA" = "true" ] && [ "$USE_INSTRUMENTED_JAVA" = "true" ]; then
         echo "FORCE_REBUILD_JAVA enabled - rebuilding instrumented Java"
         return 0
     fi
@@ -243,8 +251,15 @@ needs_build() {
     local galette_java="target/galette/java"
     local main_class="$target_dir/edu/neu/ccs/prl/galette/examples/ModelTransformationExample.class"
 
-    if [ ! -d "$target_dir" ] || [ ! -f "$main_class" ] || [ ! -d "$galette_java" ]; then
-        echo "Target directory, main class, or instrumented Java not found - build needed"
+    # Check if main class exists
+    if [ ! -d "$target_dir" ] || [ ! -f "$main_class" ]; then
+        echo "Target directory or main class not found - build needed"
+        return 0
+    fi
+
+    # Only check for instrumented Java if USE_INSTRUMENTED_JAVA is enabled
+    if [ "$USE_INSTRUMENTED_JAVA" = "true" ] && [ ! -d "$galette_java" ]; then
+        echo "Instrumented Java not found - build needed"
         return 0
     fi
 
@@ -266,7 +281,11 @@ needs_build() {
         fi
     fi
 
-    echo "Build is up-to-date - using existing compiled classes and instrumented Java"
+    if [ "$USE_INSTRUMENTED_JAVA" = "true" ]; then
+        echo "Build is up-to-date - using existing compiled classes and instrumented Java"
+    else
+        echo "Build is up-to-date - using existing compiled classes (no instrumentation)"
+    fi
     return 1
 }
 
@@ -294,16 +313,20 @@ if [ "$FORCE_CLEAN_BUILD" = "true" ] || [ "$FORCE_REBUILD_AGENT" = "true" ]; the
     echo ""
 fi
 
-# Build project with instrumentation if needed
+# Build project (with or without instrumentation)
 if needs_build; then
-    echo "Building project with Galette instrumentation..."
+    if [ "$USE_INSTRUMENTED_JAVA" = "true" ]; then
+        echo "Building project with Galette instrumentation..."
+    else
+        echo "Building project (no instrumentation)..."
+    fi
 
     if [ "$FORCE_CLEAN_BUILD" = "true" ]; then
         echo "FORCE_CLEAN_BUILD enabled - removing all build artifacts"
         clean_instrumented_java "target/galette/java" "$CLEANUP_STRATEGY"
         echo "Cleaning Maven target directory..."
         mvn clean -q
-    elif [ "$FORCE_REBUILD_JAVA" = "true" ]; then
+    elif [ "$FORCE_REBUILD_JAVA" = "true" ] && [ "$USE_INSTRUMENTED_JAVA" = "true" ]; then
         echo "FORCE_REBUILD_JAVA enabled - removing only instrumented Java"
         clean_instrumented_java "target/galette/java" "$CLEANUP_STRATEGY"
     else
@@ -316,53 +339,76 @@ if needs_build; then
         mvn compile -q
     fi
 
-    echo "Creating instrumented Java installation via process-resources phase..."
-    mvn process-resources -q
+    # Only create instrumented Java if USE_INSTRUMENTED_JAVA is enabled
+    if [ "$USE_INSTRUMENTED_JAVA" = "true" ]; then
+        echo "Creating instrumented Java installation via process-resources phase..."
+        mvn process-resources -q
 
-    if [ $? -ne 0 ]; then
-        echo "Error: Build failed!"
-        exit 1
+        if [ $? -ne 0 ]; then
+            echo "Error: Build failed!"
+            exit 1
+        fi
+        echo "Build completed successfully with instrumentation"
+    else
+        echo "Build completed (no instrumentation)"
     fi
-    echo "Build completed successfully with instrumentation"
 else
-    echo "Using existing build and instrumentation"
+    if [ "$USE_INSTRUMENTED_JAVA" = "true" ]; then
+        echo "Using existing build and instrumentation"
+    else
+        echo "Using existing build (no instrumentation)"
+    fi
 fi
 
-# Verify instrumented Java exists
+# Determine which Java to use
 INSTRUMENTED_JAVA="target/galette/java"
-if [ ! -f "$INSTRUMENTED_JAVA/bin/java" ]; then
-    echo "Error: Instrumented Java not found at: $INSTRUMENTED_JAVA"
-    echo "   Building now with process-resources phase..."
-    mvn process-resources -q || {
-        echo "Error: Failed to build instrumented Java"
-        exit 1
-    }
+GALETTE_AGENT=""
+JAVA_EXECUTABLE=""
+
+if [ "$USE_INSTRUMENTED_JAVA" = "true" ]; then
+    # Verify instrumented Java exists
     if [ ! -f "$INSTRUMENTED_JAVA/bin/java" ]; then
-        echo "Error: Instrumented Java creation failed"
+        echo "Error: Instrumented Java not found at: $INSTRUMENTED_JAVA"
+        echo "   Building now with process-resources phase..."
+        mvn process-resources -q || {
+            echo "Error: Failed to build instrumented Java"
+            exit 1
+        }
+        if [ ! -f "$INSTRUMENTED_JAVA/bin/java" ]; then
+            echo "Error: Instrumented Java creation failed"
+            exit 1
+        fi
+        echo "Instrumented Java created successfully"
+    fi
+    JAVA_EXECUTABLE="$INSTRUMENTED_JAVA/bin/java"
+
+    # Find Galette agent JAR
+    if [ -f "../galette-agent/target/galette-agent-1.0.0-SNAPSHOT.jar" ]; then
+        GALETTE_AGENT="../galette-agent/target/galette-agent-1.0.0-SNAPSHOT.jar"
+    elif [ -f "$HOME/.m2/repository/edu/neu/ccs/prl/galette/galette-agent/1.0.0-SNAPSHOT/galette-agent-1.0.0-SNAPSHOT.jar" ]; then
+        GALETTE_AGENT="$HOME/.m2/repository/edu/neu/ccs/prl/galette/galette-agent/1.0.0-SNAPSHOT/galette-agent-1.0.0-SNAPSHOT.jar"
+    else
+        echo "Error: Galette agent JAR not found!"
+        echo "   Expected locations:"
+        echo "   - ../galette-agent/target/galette-agent-1.0.0-SNAPSHOT.jar"
+        echo "   - ~/.m2/repository/edu/neu/ccs/prl/galette/galette-agent/1.0.0-SNAPSHOT/galette-agent-1.0.0-SNAPSHOT.jar"
+        echo "   Run 'mvn install' in the parent galette directory"
         exit 1
     fi
-    echo "Instrumented Java created successfully"
-fi
-
-# Find Galette agent JAR
-GALETTE_AGENT=""
-if [ -f "../galette-agent/target/galette-agent-1.0.0-SNAPSHOT.jar" ]; then
-    GALETTE_AGENT="../galette-agent/target/galette-agent-1.0.0-SNAPSHOT.jar"
-elif [ -f "$HOME/.m2/repository/edu/neu/ccs/prl/galette/galette-agent/1.0.0-SNAPSHOT/galette-agent-1.0.0-SNAPSHOT.jar" ]; then
-    GALETTE_AGENT="$HOME/.m2/repository/edu/neu/ccs/prl/galette/galette-agent/1.0.0-SNAPSHOT/galette-agent-1.0.0-SNAPSHOT.jar"
 else
-    echo "Error: Galette agent JAR not found!"
-    echo "   Expected locations:"
-    echo "   - ../galette-agent/target/galette-agent-1.0.0-SNAPSHOT.jar"
-    echo "   - ~/.m2/repository/edu/neu/ccs/prl/galette/galette-agent/1.0.0-SNAPSHOT/galette-agent-1.0.0-SNAPSHOT.jar"
-    echo "   Run 'mvn install' in the parent galette directory"
-    exit 1
+    # Use regular (non-instrumented) Java
+    JAVA_EXECUTABLE="$JAVA_HOME/bin/java"
 fi
 
 echo ""
 echo "Configuration:"
-echo "   Instrumented Java: $INSTRUMENTED_JAVA/bin/java"
-echo "   Galette Agent: $GALETTE_AGENT"
+echo "   Use Instrumented Java: $USE_INSTRUMENTED_JAVA"
+if [ "$USE_INSTRUMENTED_JAVA" = "true" ]; then
+    echo "   Java Executable: $JAVA_EXECUTABLE (instrumented)"
+    echo "   Galette Agent: $GALETTE_AGENT"
+else
+    echo "   Java Executable: $JAVA_EXECUTABLE (regular)"
+fi
 echo "   Use Green Solver: $USE_GREEN_SOLVER"
 echo "   External GreenServer: $USE_EXTERNAL_GREEN_SERVER (port $GREEN_SERVER_PORT)"
 
@@ -385,9 +431,14 @@ CP="target/classes:target/test-classes:$(cat cp.txt)"
 echo "Using classpath with $(echo $CP | tr ':' '\n' | wc -l) entries"
 echo ""
 
-# Run with instrumented Java and Galette agent
-echo "Running ModelTransformationExample with Galette instrumentation + External GreenServer..."
-echo "   Expected: Constraints will be sent to external GreenServer for solving"
+# Display run mode
+if [ "$USE_INSTRUMENTED_JAVA" = "true" ]; then
+    echo "Running ModelTransformationExample with Galette instrumentation + External GreenServer..."
+    echo "   Expected: Constraints collected via comparison interception and sent to GreenServer"
+else
+    echo "Running ModelTransformationExample WITHOUT instrumentation + External GreenServer..."
+    echo "   Expected: No constraint collection (bytecode not instrumented)"
+fi
 echo ""
 
 # Create cache directory if it doesn't exist
@@ -407,17 +458,30 @@ fi
 
 # Run with automated input: option 2 (concolic execution), then 3 (exit)
 # This tests the GreenServer integration automatically
-echo -e "2\n3" | "$INSTRUMENTED_JAVA/bin/java" \
-  -cp "$CP" \
-  -Xbootclasspath/a:"$GALETTE_AGENT" \
-  -javaagent:"$GALETTE_AGENT" \
-  -Dgalette.cache=target/galette/cache \
-  -Dgalette.coverage=true \
-  -Dsymbolic.execution.debug=true \
-  -Dgalette.debug=true \
-  $OPTIONAL_JVM_ARGS \
-  -verbose:javaagent \
-  edu.neu.ccs.prl.galette.examples.ModelTransformationExample "$@"
+if [ "$USE_INSTRUMENTED_JAVA" = "true" ]; then
+    # Run with instrumented Java and Galette agent for constraint collection
+    echo -e "2\n3" | "$JAVA_EXECUTABLE" \
+      -cp "$CP" \
+      -Xbootclasspath/a:"$GALETTE_AGENT" \
+      -javaagent:"$GALETTE_AGENT" \
+      -Dgalette.cache=target/galette/cache \
+      -Dgalette.coverage=true \
+      -Dsymbolic.execution.debug=true \
+      -Dgalette.debug=true \
+      $OPTIONAL_JVM_ARGS \
+      -verbose:javaagent \
+      edu.neu.ccs.prl.galette.examples.ModelTransformationExample "$@"
+else
+    # Run with regular Java (no instrumentation)
+    echo -e "2\n3" | "$JAVA_EXECUTABLE" \
+      -cp "$CP" \
+      -Dgalette.cache=target/galette/cache \
+      -Dgalette.coverage=true \
+      -Dsymbolic.execution.debug=true \
+      -Dgalette.debug=true \
+      $OPTIONAL_JVM_ARGS \
+      edu.neu.ccs.prl.galette.examples.ModelTransformationExample "$@"
+fi
 
 echo ""
 echo "Execution completed"
