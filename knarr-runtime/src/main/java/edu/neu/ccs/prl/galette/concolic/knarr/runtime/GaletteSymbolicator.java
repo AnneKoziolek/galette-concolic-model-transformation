@@ -317,6 +317,9 @@ public class GaletteSymbolicator {
      */
     private static InputSolution solveWithGreen(Expression constraint) {
         if (!USE_GREEN_SOLVER) {
+            if (DEBUG) {
+                System.out.println("USE_GREEN_SOLVER is not set, falling back to heuristics.");
+            }
             return null;
         }
 
@@ -443,12 +446,12 @@ public class GaletteSymbolicator {
                     System.out.println("Using Green solver solution");
                 }
                 return greenSolution;
+            } else {    
+                if (DEBUG) {
+                    System.out.println("Green solver did not produce a solution; falling back to heuristic extraction");
+                }
             }
 
-            // Fallback: heuristic extraction
-            if (DEBUG) {
-                System.out.println("Falling back to heuristic constraint extraction");
-            }
 
             InputSolution solution = new InputSolution();
 
