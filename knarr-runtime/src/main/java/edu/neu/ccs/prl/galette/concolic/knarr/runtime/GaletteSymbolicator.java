@@ -33,7 +33,7 @@ public class GaletteSymbolicator {
      */
     static String SERVER_HOST = System.getProperty("SATServer", "127.0.0.1");
 
-    static int SERVER_PORT = Integer.valueOf(System.getProperty("SATPort", "9090"));
+    static int SERVER_PORT = Integer.valueOf(System.getProperty("SATPort", "9408"));
 
     /**
      * Current solution from constraint solver.
@@ -43,39 +43,22 @@ public class GaletteSymbolicator {
     /**
      * Debug flag.
      */
-    public static final boolean DEBUG = Boolean.valueOf(System.getProperty("DEBUG", "false"));
+    public static final boolean DEBUG = Boolean.valueOf(System.getProperty("DEBUG", "true"));
 
     /**
      * Toggle to enable solving with Green instead of the heuristic extractor.
      * Can be set via -Dgalette.useGreenSolver=true or env GALETTE_USE_GREEN_SOLVER=true.
      */
-    private static final boolean USE_GREEN_SOLVER;
+    private static final boolean USE_GREEN_SOLVER = Boolean.parseBoolean(System.getProperty(
+            "galette.useGreenSolver", System.getenv().getOrDefault("GALETTE_USE_GREEN_SOLVER", "false")));
 
     /**
-     * Toggle to use remote GreenServer via sockets instead of in-process Green.
-     * This avoids instrumentation conflicts with Green/Z3 classes.
-     * Can be set via -Dgalette.useGreenServer=true or env GALETTE_USE_GREEN_SERVER=true.
+     * Toggle to use external GreenServer process instead of in-process Green solver.
+     * This avoids instrumentation conflicts when Galette instruments the Green bytecode.
+     * Can be set via -Dgalette.useExternalGreenServer=true.
      */
-    private static final boolean USE_GREEN_SERVER;
-
-    static {
-        // Avoid lambda - use explicit initialization
-        String sysProp = System.getProperty("galette.useGreenSolver");
-        String envVar = System.getenv("GALETTE_USE_GREEN_SOLVER");
-        String value = sysProp != null ? sysProp : (envVar != null ? envVar : "false");
-        USE_GREEN_SOLVER = Boolean.parseBoolean(value);
-
-        // Check for Green server mode
-        String serverSysProp = System.getProperty("galette.useGreenServer");
-        String serverEnvVar = System.getenv("GALETTE_USE_GREEN_SERVER");
-        String serverValue = serverSysProp != null ? serverSysProp : (serverEnvVar != null ? serverEnvVar : "true");
-        USE_GREEN_SERVER = Boolean.parseBoolean(serverValue);
-    }
-
-    /**
-     * Cached GreenSocketClient for remote solver.
-     */
-    private static volatile GreenSocketClient greenSocketClient;
+    private static final boolean USE_EXTERNAL_SERVER =
+            Boolean.parseBoolean(System.getProperty("galette.useExternalGreenServer", "false"));
 
     /**
      * Lazy initialized Green solver instance for model queries.
@@ -121,17 +104,13 @@ public class GaletteSymbolicator {
         }
 
         // Setup shutdown hook to clean up resources
-        // Use anonymous inner class instead of lambda to avoid instrumentation issues
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            @Override
-            public void run() {
-                try {
-                    cleanup();
-                } catch (Exception e) {
-                    System.err.println("Error during Symbolicator cleanup: " + e.getMessage());
-                }
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                cleanup();
+            } catch (Exception e) {
+                System.err.println("Error during Symbolicator cleanup: " + e.getMessage());
             }
-        });
+        }));
     }
 
     /**
@@ -148,7 +127,7 @@ public class GaletteSymbolicator {
 
         try {
             // Check label validity
-            PathUtils.checkLabelAndInitJPF(label);
+            GalettePathUtils.checkLabelAndInitJPF(label);
 
             // Create Galette tag
             Tag symbolicTag = Tag.of(label);
@@ -157,9 +136,6 @@ public class GaletteSymbolicator {
             IntVariable var = new IntVariable(label, null, null);
             tagToExpression.put(symbolicTag, var);
             valueToTag.put(concreteValue, symbolicTag);
-
-            // Add label to PathUtils for tag-based filtering
-            PathUtils.addUserSymbolicLabel(label);
 
             if (DEBUG) {
                 System.out.println("Created symbolic int: " + label + " = " + concreteValue);
@@ -185,7 +161,7 @@ public class GaletteSymbolicator {
         }
 
         try {
-            PathUtils.checkLabelAndInitJPF(label);
+            GalettePathUtils.checkLabelAndInitJPF(label);
 
             Tag symbolicTag = Tag.of(label);
 
@@ -218,19 +194,17 @@ public class GaletteSymbolicator {
         }
 
         try {
-            PathUtils.checkLabelAndInitJPF(label);
+            GalettePathUtils.checkLabelAndInitJPF(label);
 
             Tag symbolicTag = Tag.of(label);
 
             // Use Galette's Tainter to associate the tag with the value
             double taggedValue = edu.neu.ccs.prl.galette.internal.runtime.Tainter.setTag(concreteValue, symbolicTag);
 
-            RealVariable var = new RealVariable(label, null, null);
+            // Use proper bounds for serialization compatibility (needed for GreenServer)
+            RealVariable var = new RealVariable(label, Double.MIN_VALUE, Double.MAX_VALUE);
             tagToExpression.put(symbolicTag, var);
             valueToTag.put(taggedValue, symbolicTag);
-
-            // Add label to PathUtils for tag-based filtering
-            PathUtils.addUserSymbolicLabel(label);
 
             if (DEBUG) {
                 System.out.println("Created symbolic double with Galette tagging: " + label + " = " + concreteValue);
@@ -256,7 +230,7 @@ public class GaletteSymbolicator {
         }
 
         try {
-            PathUtils.checkLabelAndInitJPF(label);
+            GalettePathUtils.checkLabelAndInitJPF(label);
 
             Tag symbolicTag = Tag.of(label);
 
@@ -295,14 +269,10 @@ public class GaletteSymbolicator {
         return valueToTag.get(value);
     }
 
-    // ==================== GREEN SOLVER INTEGRATION ====================
-
     /**
-     * Initialize Green solver when enabled. Uses Z3 Java for SAT solving.
+     * Initialize Green solver when enabled. Uses Choco3 SAT solving without external dependencies.
      * This approach uses constraint satisfiability checking to validate thresholds
      * and generate alternative inputs based on negated path conditions.
-     *
-     * NOTE: Avoid lambdas - Galette cannot instrument them properly.
      */
     private static Green ensureGreenSolver() {
         if (greenSolver != null) {
@@ -353,9 +323,7 @@ public class GaletteSymbolicator {
     /**
      * Attempt solving via Green SAT checker; validates generated values against constraints.
      * Falls back to heuristic if not enabled or if Green is unavailable.
-     *
-     * When USE_GREEN_SERVER is true, this uses a remote GreenServer via sockets
-     * to avoid instrumentation conflicts with Green/Z3 classes.
+     * When USE_EXTERNAL_SERVER is true, delegates to external GreenServer process.
      */
     private static InputSolution solveWithGreen(Expression constraint) {
         if (!USE_GREEN_SOLVER) {
@@ -373,92 +341,22 @@ public class GaletteSymbolicator {
             return null;
         }
 
-        // Try remote solver first (avoids instrumentation conflicts)
-        if (USE_GREEN_SERVER) {
-            return solveWithGreenServer(constraint);
-        }
-
-        // Fall back to in-process Green solver
-        return solveWithGreenInProcess(constraint);
-    }
-
-    /**
-     * Solve constraint using remote GreenServer via sockets.
-     * This approach runs Green/Z3 in a separate non-instrumented JVM.
-     */
-    private static InputSolution solveWithGreenServer(Expression constraint) {
-        try {
-            if (DEBUG) {
-                System.out.println("[GreenServer] Checking constraint satisfiability: " + constraint);
-            }
-
-            // Get or create socket client
-            if (greenSocketClient == null || !greenSocketClient.isConnected()) {
-                synchronized (GREEN_INIT_LOCK) {
-                    if (greenSocketClient == null || !greenSocketClient.isConnected()) {
-                        greenSocketClient = new GreenSocketClient();
-                        if (!greenSocketClient.connect()) {
-                            System.err.println(
-                                    "[GreenServer] Failed to connect to server - falling back to in-process");
-                            return solveWithGreenInProcess(constraint);
-                        }
-                        if (DEBUG) {
-                            System.out.println("[GreenServer] Connected to solver server");
-                        }
-                    }
-                }
-            }
-
-            Boolean isSatisfiable = greenSocketClient.isSatisfiable(constraint);
-
+        // Use external GreenServer if configured (avoids Galette instrumentation of Green bytecode)
+        if (USE_EXTERNAL_SERVER) {
             if (DEBUG) {
                 System.out.println(
-                        "[GreenServer] SAT result: " + (isSatisfiable != null ? isSatisfiable : "null/error"));
+                        "[External Server] Using external GreenServer at " + SERVER_HOST + ":" + SERVER_PORT);
             }
-
-            if (isSatisfiable != null && isSatisfiable) {
-                // Constraint is satisfiable - generate a solution
-                InputSolution solution = new InputSolution();
-                solution.setValue("satisfiable", "YES");
-                solution.setValue("solver", "green-server");
-
-                // Generate values using heuristic
-                Map<String, Object> alternatives = generateAlternativeValues(constraint);
-                Set<Map.Entry<String, Object>> entries = alternatives.entrySet();
-                for (Map.Entry<String, Object> entry : entries) {
-                    solution.setValue(entry.getKey(), entry.getValue());
-                }
-
-                if (DEBUG) {
-                    System.out.println("[GreenServer] Generated solution: " + solution);
-                }
-                return solution;
-            } else if (isSatisfiable == null) {
-                if (DEBUG) {
-                    System.out.println("[GreenServer] SAT returned null (error or connection issue)");
-                }
-            } else {
-                if (DEBUG) {
-                    System.out.println("[GreenServer] Constraint is unsatisfiable");
-                }
+            InputSolution externalResult = sendConstraintToServer(constraint);
+            if (externalResult != null) {
+                return externalResult;
             }
-
-            return null;
-        } catch (Exception e) {
-            System.err.println("[GreenServer] Error: " + e.getMessage());
             if (DEBUG) {
-                e.printStackTrace();
+                System.out.println("[External Server] External server failed, falling back to heuristics");
             }
-            // Try in-process fallback
-            return solveWithGreenInProcess(constraint);
+            return null; // Don't fall back to in-process Green when external is configured
         }
-    }
 
-    /**
-     * Solve constraint using in-process Green solver.
-     * NOTE: This may fail if Green/Z3 classes get instrumented by Galette.
-     */
-    private static InputSolution solveWithGreenInProcess(Expression constraint) {
         Green solver = ensureGreenSolver();
         if (solver == null) {
             return null; // misconfiguration or missing solver
@@ -497,13 +395,12 @@ public class GaletteSymbolicator {
                 // then validate it makes sense in the context
                 InputSolution solution = new InputSolution();
                 solution.setValue("satisfiable", "YES");
+                // solution.setValue("constraint", constraintStr);
                 solution.setValue("solver", "green-sat-validation");
 
                 // Generate values using heuristic, but mark them as validated
                 Map<String, Object> alternatives = generateAlternativeValues(constraint);
-                // Use explicit iteration instead of forEach lambda
-                Set<Map.Entry<String, Object>> entries = alternatives.entrySet();
-                for (Map.Entry<String, Object> entry : entries) {
+                for (Map.Entry<String, Object> entry : alternatives.entrySet()) {
                     solution.setValue(entry.getKey(), entry.getValue());
                 }
 
@@ -540,8 +437,6 @@ public class GaletteSymbolicator {
         }
     }
 
-    // ==================== END GREEN SOLVER INTEGRATION ====================
-
     /**
      * Solve the current path condition and get a new input.
      *
@@ -549,8 +444,7 @@ public class GaletteSymbolicator {
      */
     public static InputSolution solvePathCondition() {
         try {
-            // Use getCurPCWithGalette() to include constraints from automatic interception
-            PathConditionWrapper pc = PathUtils.getCurPCWithGalette();
+            PathConditionWrapper pc = GalettePathUtils.getCurPC();
             if (pc == null || pc.isEmpty()) {
                 if (DEBUG) {
                     System.out.println("No path constraints to solve");
@@ -567,24 +461,31 @@ public class GaletteSymbolicator {
                 return null;
             }
 
-            // Try Green solver first when enabled
+            if (DEBUG) {
+                System.out.println("Solving constraint: " + constraint);
+            }
+
+            // Try Green first when enabled
             InputSolution greenSolution = solveWithGreen(constraint);
             if (greenSolution != null) {
                 if (DEBUG) {
                     System.out.println("Using Green solver solution");
                 }
                 return greenSolution;
-            } else {    
+            } else {
                 if (DEBUG) {
                     System.out.println("Green solver did not produce a solution; falling back to heuristic extraction");
                 }
             }
 
-
             InputSolution solution = new InputSolution();
 
             // Extract variable assignments from constraints
             extractSolutionFromConstraint(constraint, solution);
+
+            if (DEBUG) {
+                System.out.println("Generated heuristic solution: " + solution);
+            }
 
             return solution;
         } catch (Exception e) {
@@ -830,7 +731,8 @@ public class GaletteSymbolicator {
     }
 
     /**
-     * Send constraint to server for solving.
+     * Send constraint to server for solving using GreenServer JSON protocol.
+     * Protocol: JSON expression → single char response ('1'=SAT, '0'=UNSAT, 'E'=Error)
      *
      * @param constraint The constraint to solve
      * @return Solution from server, or null if failed
@@ -838,29 +740,66 @@ public class GaletteSymbolicator {
     public static InputSolution sendConstraintToServer(Expression constraint) {
         try {
             if (!connectToServer()) {
+                if (DEBUG) {
+                    System.out.println(
+                            "[External Server] Could not connect to GreenServer at " + SERVER_HOST + ":" + SERVER_PORT);
+                }
                 return null;
             }
 
-            ObjectOutputStream out = new ObjectOutputStream(serverConnection.getOutputStream());
-            ObjectInputStream in = new ObjectInputStream(serverConnection.getInputStream());
+            // Convert Expression to JSON (avoids serialization version mismatch)
+            String jsonExpr = ExpressionJsonConverter.toJson(constraint);
 
-            // Send constraint
-            out.writeObject(constraint.toString());
-            out.flush();
-
-            // Read response
-            Object response = in.readObject();
-            if (response instanceof InputSolution) {
-                return (InputSolution) response;
-            }
+            // Send as text line (GreenServer reads lines with BufferedReader)
+            PrintWriter out = new PrintWriter(serverConnection.getOutputStream(), true);
+            BufferedReader in = new BufferedReader(new InputStreamReader(serverConnection.getInputStream()));
 
             if (DEBUG) {
-                System.out.println("Server response: " + response);
+                System.out.println("[External Server] Sending JSON constraint to GreenServer: "
+                        + jsonExpr.substring(0, Math.min(100, jsonExpr.length())) + "...");
             }
 
-            return null;
+            out.println(jsonExpr);
+
+            // Read single character response
+            int response = in.read();
+
+            if (DEBUG) {
+                System.out.println("[External Server] GreenServer response: " + (char) response);
+            }
+
+            InputSolution solution = new InputSolution();
+
+            if (response == '1') {
+                // SAT - constraint is satisfiable
+                solution.setValue("satisfiable", "YES");
+                solution.setValue("solver", "greenserver-external");
+
+                // Generate alternative values using heuristic (server only returns SAT/UNSAT)
+                Map<String, Object> alternatives = generateAlternativeValues(constraint);
+                for (Map.Entry<String, Object> entry : alternatives.entrySet()) {
+                    solution.setValue(entry.getKey(), entry.getValue());
+                }
+                return solution;
+            } else if (response == '0') {
+                // UNSAT - constraint is unsatisfiable
+                if (DEBUG) {
+                    System.out.println("[External Server] Constraint is UNSAT");
+                }
+                return null;
+            } else if (response == 'E') {
+                // Error from server
+                System.err.println("[External Server] GreenServer returned error for constraint");
+                return null;
+            } else {
+                System.err.println("[External Server] Unexpected response from GreenServer: " + (char) response);
+                return null;
+            }
         } catch (Exception e) {
-            System.err.println("Error communicating with server: " + e.getMessage());
+            System.err.println("[External Server] Error communicating with GreenServer: " + e.getMessage());
+            if (DEBUG) {
+                e.printStackTrace();
+            }
             return null;
         }
     }
@@ -873,9 +812,7 @@ public class GaletteSymbolicator {
         tagToExpression.clear();
         mySoln = null;
         GaletteGreenBridge.clearVariableCache();
-        PathUtils.reset();
-        // Clear user symbolic labels in PathUtils
-        PathUtils.clearUserSymbolicLabels();
+        GalettePathUtils.reset();
 
         if (DEBUG) {
             System.out.println("Reset GaletteSymbolicator state");
@@ -889,11 +826,6 @@ public class GaletteSymbolicator {
         try {
             if (serverConnection != null && !serverConnection.isClosed()) {
                 serverConnection.close();
-            }
-            // Close GreenServer socket client
-            if (greenSocketClient != null) {
-                greenSocketClient.close();
-                greenSocketClient = null;
             }
             reset();
         } catch (IOException e) {
@@ -911,7 +843,9 @@ public class GaletteSymbolicator {
         sb.append("GaletteSymbolicator Statistics:\n");
         sb.append("  Symbolic values: ").append(valueToTag.size()).append("\n");
         sb.append("  Green expressions: ").append(tagToExpression.size()).append("\n");
-        sb.append("  Path constraints: ").append(PathUtils.getCurPC().size()).append("\n");
+        sb.append("  Path constraints: ")
+                .append(GalettePathUtils.getCurPC().size())
+                .append("\n");
         sb.append("  Server connected: ")
                 .append(serverConnection != null && !serverConnection.isClosed())
                 .append("\n");

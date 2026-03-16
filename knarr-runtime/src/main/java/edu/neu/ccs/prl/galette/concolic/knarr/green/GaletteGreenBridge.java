@@ -90,21 +90,23 @@ public class GaletteGreenBridge {
         // Generate unique variable name to avoid collisions between different scopes
         String varName = baseName + "_" + variableCounter.getAndIncrement();
 
+        // Use proper bounds for serialization compatibility (needed for GreenServer)
         if (value instanceof Integer || value instanceof Short || value instanceof Byte) {
-            return new IntVariable(varName, null, null);
+            return new IntVariable(varName, Integer.MIN_VALUE, Integer.MAX_VALUE);
         } else if (value instanceof Long) {
-            return new IntVariable(varName, null, null); // Green uses IntVariable for longs too
+            return new IntVariable(
+                    varName, Integer.MIN_VALUE, Integer.MAX_VALUE); // Green uses IntVariable for longs too
         } else if (value instanceof Float || value instanceof Double) {
-            return new RealVariable(varName, null, null);
+            return new RealVariable(varName, Double.MIN_VALUE, Double.MAX_VALUE);
         } else if (value instanceof Boolean) {
-            return new IntVariable(varName, null, null); // Booleans as 0/1 integers
+            return new IntVariable(varName, 0, 1); // Booleans as 0/1 integers
         } else if (value instanceof Character) {
-            return new IntVariable(varName, null, null); // Characters as integer values
+            return new IntVariable(varName, 0, 65535); // Characters as integer values
         } else if (value instanceof String) {
             return new StringVariable(varName);
         } else {
             // For other types, treat as integer representation
-            return new IntVariable(varName, null, null);
+            return new IntVariable(varName, Integer.MIN_VALUE, Integer.MAX_VALUE);
         }
     }
 
