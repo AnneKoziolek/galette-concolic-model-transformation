@@ -24,6 +24,11 @@ FORCE_REBUILD_AGENT=false      # Force rebuild galette-agent JAR only
 FORCE_REBUILD_CLASSES=false    # Force rebuild knarr-runtime Java classes only (intelligent detection by default)
 FORCE_REBUILD_JAVA=false       # Force rebuild instrumented Java installation only (intelligent detection by default)
 
+# ============================================================================
+# Runtime Configuration
+# ============================================================================
+USE_GREEN_SOLVER=true          # Enable Green solver integration in GaletteSymbolicator (-Dgalette.useGreenSolver=true)
+
 # Cleanup strategy for instrumented Java (when rebuilding)
 # Options: "safe" (rm -rf with verification), "aggressive" (find-based deletion), "nuclear" (rm -rf recursively)
 # "safe": Default, removes directory and verifies deletion before rebuild
@@ -223,6 +228,7 @@ echo ""
 echo "🔧 Configuration:"
 echo "   Instrumented Java: $INSTRUMENTED_JAVA/bin/java"
 echo "   Galette Agent: $GALETTE_AGENT"
+echo "   Use Green Solver: $USE_GREEN_SOLVER"
 
 # Generate classpath using Maven (only if needed)
 if [ ! -f cp.txt ] || [ $(find cp.txt -mmin +60 2>/dev/null | wc -l) -eq 1 ]; then
@@ -257,6 +263,15 @@ echo "   Galette cache directory: target/galette/cache"
 # Create cache directory if it doesn't exist
 mkdir -p target/galette/cache
 
+# Build optional JVM arguments based on configuration
+OPTIONAL_JVM_ARGS=""
+if [ "$USE_GREEN_SOLVER" = "true" ]; then
+    OPTIONAL_JVM_ARGS="$OPTIONAL_JVM_ARGS -Dgalette.useGreenSolver=true"
+    echo "   Green Solver: ENABLED"
+else
+    echo "   Green Solver: disabled"
+fi
+
 "$INSTRUMENTED_JAVA/bin/java" \
   -cp "$CP" \
   -Xbootclasspath/a:"$GALETTE_AGENT" \
@@ -265,6 +280,7 @@ mkdir -p target/galette/cache
   -Dgalette.coverage=true \
   -Dsymbolic.execution.debug=true \
   -Dgalette.debug=true \
+  $OPTIONAL_JVM_ARGS \
   -verbose:javaagent \
   edu.neu.ccs.prl.galette.examples.ModelTransformationExample "$@"
 
