@@ -458,8 +458,8 @@ public class GaletteSymbolicator {
             // Explore below: var < threshold
             constraint = new BinaryOperation(Operation.Operator.LT, var, thresholdConst);
         } else {
-            // Explore above: var >= threshold
-            constraint = new BinaryOperation(Operation.Operator.GE, var, thresholdConst);
+            // Explore above: var > threshold (strict GT to flip a > branch)
+            constraint = new BinaryOperation(Operation.Operator.GT, var, thresholdConst);
         }
 
         if (DEBUG) {
@@ -480,7 +480,7 @@ public class GaletteSymbolicator {
     public static Double generateInputForBranch(String variableName, double threshold, boolean exploreBelow) {
         if (DEBUG) {
             System.out.println(
-                    "[Solver] Generating input for " + variableName + (exploreBelow ? " < " : " >= ") + threshold);
+                    "[Solver] Generating input for " + variableName + (exploreBelow ? " < " : " > ") + threshold);
         }
 
         // Build the constraint for the target branch

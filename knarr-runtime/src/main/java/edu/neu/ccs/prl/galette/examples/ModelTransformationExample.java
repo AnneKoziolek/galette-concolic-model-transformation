@@ -299,41 +299,70 @@ public class ModelTransformationExample {
         }
 
         /**
-         * Parse a single comparison like "12.0<80.0" or "81.0>80.0"
+         * Parse a single comparison like "12.0<80.0", "81.0>80.0", or "80.0==80.0"
          */
         private void parseComparison(String comparison) {
-            // Try to match patterns: value < threshold, value > threshold, etc.
-            String[] ltParts = comparison.split("<");
-            String[] gtParts = comparison.split(">");
-            String[] leParts = comparison.split("<=");
-            String[] geParts = comparison.split(">=");
-
             Double leftValue = null;
             Double rightValue = null;
             boolean isLessThan = false;
             boolean isGreaterThan = false;
+            boolean isEqual = false;
 
-            if (leParts.length == 2) {
-                leftValue = tryParseDouble(leParts[0]);
-                rightValue = tryParseDouble(leParts[1]);
-                isLessThan = true;
-            } else if (geParts.length == 2) {
-                leftValue = tryParseDouble(geParts[0]);
-                rightValue = tryParseDouble(geParts[1]);
-                isGreaterThan = true;
-            } else if (ltParts.length == 2) {
-                leftValue = tryParseDouble(ltParts[0]);
-                rightValue = tryParseDouble(ltParts[1]);
-                isLessThan = true;
-            } else if (gtParts.length == 2) {
-                leftValue = tryParseDouble(gtParts[0]);
-                rightValue = tryParseDouble(gtParts[1]);
-                isGreaterThan = true;
+            // Check multi-char operators first (==, !=, <=, >=) before single-char (< >)
+            if (comparison.contains("==")) {
+                String[] parts = comparison.split("==");
+                if (parts.length == 2) {
+                    leftValue = tryParseDouble(parts[0]);
+                    rightValue = tryParseDouble(parts[1]);
+                    isEqual = true;
+                }
+            } else if (comparison.contains("!=")) {
+                String[] parts = comparison.split("!=");
+                if (parts.length == 2) {
+                    leftValue = tryParseDouble(parts[0]);
+                    rightValue = tryParseDouble(parts[1]);
+                    // != means we took the not-equal branch; record both directions as partially explored
+                    isLessThan = true;
+                    isGreaterThan = true;
+                }
+            } else if (comparison.contains("<=")) {
+                String[] parts = comparison.split("<=");
+                if (parts.length == 2) {
+                    leftValue = tryParseDouble(parts[0]);
+                    rightValue = tryParseDouble(parts[1]);
+                    isLessThan = true;
+                }
+            } else if (comparison.contains(">=")) {
+                String[] parts = comparison.split(">=");
+                if (parts.length == 2) {
+                    leftValue = tryParseDouble(parts[0]);
+                    rightValue = tryParseDouble(parts[1]);
+                    isGreaterThan = true;
+                }
+            } else if (comparison.contains("<")) {
+                String[] parts = comparison.split("<");
+                if (parts.length == 2) {
+                    leftValue = tryParseDouble(parts[0]);
+                    rightValue = tryParseDouble(parts[1]);
+                    isLessThan = true;
+                }
+            } else if (comparison.contains(">")) {
+                String[] parts = comparison.split(">");
+                if (parts.length == 2) {
+                    leftValue = tryParseDouble(parts[0]);
+                    rightValue = tryParseDouble(parts[1]);
+                    isGreaterThan = true;
+                }
             }
 
             if (leftValue != null && rightValue != null) {
-                // The threshold is typically the constant being compared against (rightValue)
-                // leftValue is typically the symbolic input value
+                // For ==, the DCMPL result was 0, meaning value equals threshold.
+                // This is the "equal" case of the comparison; record it as the
+                // above/equal branch (since the code checks thickness > threshold,
+                // equal means we took the false/below branch).
+                if (isEqual) {
+                    isLessThan = true; // value == threshold means "not greater than"
+                }
                 recordBranchCoverage(rightValue, isLessThan, isGreaterThan);
             }
         }
@@ -444,9 +473,10 @@ public class ModelTransformationExample {
      * Execute transformation with concolic analysis.
      */
     private static ConcolicResult executeConcolic(BrakeDiscSource source, double thickness, String label) {
-        // Reset symbolic execution state
+        // Reset symbolic execution state (both knarr-runtime and galette-agent constraints)
         GaletteSymbolicator.reset();
         PathUtils.resetPC();
+        edu.neu.ccs.prl.galette.concolic.knarr.runtime.GalettePathConstraintBridge.resetGaletteConstraints();
 
         // Create symbolic value for thickness - we need to get the TAGGED VALUE, not just the tag
         Tag symbolicTag = GaletteSymbolicator.makeSymbolicDouble(label, thickness);

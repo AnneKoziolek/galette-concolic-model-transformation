@@ -52,6 +52,7 @@ public class GalettePathConstraintBridge {
 
     /**
      * Retrieve path constraints from Galette's automatic interception.
+     * Uses flush (get + clear) to prevent constraint accumulation across iterations.
      */
     public static List<Expression> getGaletteConstraints() {
         System.out.println(
@@ -59,13 +60,28 @@ public class GalettePathConstraintBridge {
         if (!isAvailable()) return new ArrayList<>();
 
         try {
+            // Use flush instead of getCurrent to clear constraints after reading
             @SuppressWarnings("unchecked")
-            List<Object> rawConstraints = (List<Object>) getCurrentMethod.invoke(null);
-            System.out.println("🔧 Retrieved " + rawConstraints.size() + " raw constraints from Galette PathUtils");
+            List<Object> rawConstraints = (List<Object>) flushMethod.invoke(null);
+            System.out.println("🔧 Flushed " + rawConstraints.size() + " raw constraints from Galette PathUtils");
             return convertToGreenExpressions(rawConstraints);
         } catch (Exception e) {
             System.out.println("⚠️ Exception in getGaletteConstraints: " + e.getMessage());
             return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Reset (clear) all collected constraints without reading them.
+     * Call this at the start of each concolic iteration to prevent accumulation.
+     */
+    public static void resetGaletteConstraints() {
+        if (!isAvailable()) return;
+        try {
+            flushMethod.invoke(null); // flush = get + clear; we discard the result
+            System.out.println("🔧 GalettePathConstraintBridge: constraints reset");
+        } catch (Exception e) {
+            System.out.println("⚠️ Exception in resetGaletteConstraints: " + e.getMessage());
         }
     }
 
@@ -86,22 +102,52 @@ public class GalettePathConstraintBridge {
 
     /**
      * Convert Galette Constraints to Green Expression objects.
+     * Filters out constraints where both operands are concrete constants
+     * (these are tautologies like 0 < 1 that add no symbolic information).
      */
     private static List<Expression> convertToGreenExpressions(List<Object> rawConstraints) {
         List<Expression> expressions = new ArrayList<>();
+        int skippedConcrete = 0;
 
         for (Object constraint : rawConstraints) {
             try {
                 Expression expr = convertSingleConstraint(constraint);
                 if (expr != null) {
-                    expressions.add(expr);
+                    // Filter: only keep constraints that involve at least one symbolic variable
+                    if (containsSymbolicVariable(expr)) {
+                        expressions.add(expr);
+                    } else {
+                        skippedConcrete++;
+                    }
                 }
             } catch (Exception e) {
                 // Skip invalid constraints
             }
         }
 
+        if (skippedConcrete > 0) {
+            System.out.println("🔧 Filtered out " + skippedConcrete + " concrete-only constraints");
+        }
+
         return expressions;
+    }
+
+    /**
+     * Check if an expression contains at least one symbolic variable (RealVariable or IntVariable).
+     */
+    private static boolean containsSymbolicVariable(Expression expr) {
+        if (expr instanceof RealVariable || expr instanceof IntVariable) {
+            return true;
+        }
+        if (expr instanceof BinaryOperation) {
+            BinaryOperation binOp = (BinaryOperation) expr;
+            return containsSymbolicVariable(binOp.left)
+                    || containsSymbolicVariable(binOp.right);
+        }
+        if (expr instanceof UnaryOperation) {
+            return containsSymbolicVariable(((UnaryOperation) expr).operand);
+        }
+        return false;
     }
 
     /**
