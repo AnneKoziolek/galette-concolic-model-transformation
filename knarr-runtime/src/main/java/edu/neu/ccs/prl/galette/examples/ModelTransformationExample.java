@@ -489,11 +489,11 @@ public class ModelTransformationExample {
 
     /**
      * Generate alternative input values to explore different execution paths.
+     * Uses the Z3 solver for input generation.
      */
     private static Double generateAlternativeInput(List<Double> exploredInputs, List<String> pathConstraints) {
 
-        // Fallback: Generate alternative inputs based on analysis of explored inputs
-        // Use dynamic threshold discovery from path constraints
+        // Generate alternative inputs using Z3 solver based on discovered thresholds
         try {
             PathConditionWrapper pc = PathUtils.getCurPCWithGalette();
             Set<Double> discoveredThresholds = new HashSet<>();
@@ -511,66 +511,58 @@ public class ModelTransformationExample {
                 System.out.println("🔍 generateAlternativeInput: No path constraints available (pc=" + pc + ")");
             }
 
-            // If we found thresholds from constraints, use them
+            // If we found thresholds from constraints, use Z3 solver to generate inputs
             if (!discoveredThresholds.isEmpty()) {
-                System.out.println("🔍 Using discovered thresholds: " + discoveredThresholds);
+                System.out.println("🔍 Using Z3 solver with discovered thresholds: " + discoveredThresholds);
                 for (Double threshold : discoveredThresholds) {
-                    // Use traditional loops instead of lambdas to avoid instrumentation issues
+                    // Check which direction is unexplored
                     boolean hasLowValue = false;
                     boolean hasHighValue = false;
                     for (Double v : exploredInputs) {
-                        if (v <= threshold) hasLowValue = true;
-                        if (v > threshold) hasHighValue = true;
+                        if (v < threshold) hasLowValue = true;
+                        if (v >= threshold) hasHighValue = true;
                     }
 
                     System.out.println(
                             "  Threshold " + threshold + ": hasLow=" + hasLowValue + ", hasHigh=" + hasHighValue);
 
                     if (!hasLowValue) {
-                        System.out.println("  → Generating value " + (threshold - 1.0) + " for testing ≤ " + threshold);
-                        return threshold - 1.0; // Test the thickness <= threshold path
+                        // Use Z3 solver to generate value < threshold
+                        System.out.println("  → Asking Z3 solver for value < " + threshold);
+                        Double candidate = GaletteSymbolicator.generateInputForBranch("thickness", threshold, true);
+                        if (candidate != null && !exploredInputs.contains(candidate)) {
+                            System.out.println("  → Z3 generated: " + candidate);
+                            return candidate;
+                        }
                     } else if (!hasHighValue) {
-                        System.out.println("  → Generating value " + (threshold + 1.0) + " for testing > " + threshold);
-                        return threshold + 1.0; // Test the thickness > threshold path
+                        // Use Z3 solver to generate value >= threshold
+                        System.out.println("  → Asking Z3 solver for value >= " + threshold);
+                        Double candidate = GaletteSymbolicator.generateInputForBranch("thickness", threshold, false);
+                        if (candidate != null && !exploredInputs.contains(candidate)) {
+                            System.out.println("  → Z3 generated: " + candidate);
+                            return candidate;
+                        }
                     }
                 }
             }
         } catch (Exception e) {
-            System.out.println("Warning: Could not extract thresholds from path constraints: " + e.getMessage());
+            System.out.println("Warning: Could not use Z3 solver: " + e.getMessage());
             if (e.getMessage() == null) {
-                e.printStackTrace(); // Print stack trace if message is null
+                e.printStackTrace();
             }
         }
 
-        // Ultimate fallback: try values around input distribution
-        if (!exploredInputs.isEmpty()) {
-            Collections.sort(new ArrayList<>(exploredInputs));
-            double minInput = Collections.min(exploredInputs);
-            double maxInput = Collections.max(exploredInputs);
-            double midpoint = (minInput + maxInput) / 2.0;
-
-            // Use traditional loops instead of lambdas to avoid instrumentation issues
-            boolean hasLowValue = false;
-            boolean hasHighValue = false;
-            for (Double v : exploredInputs) {
-                if (v <= midpoint) hasLowValue = true;
-                if (v > midpoint) hasHighValue = true;
-            }
-
-            if (!hasLowValue) {
-                return midpoint - 1.0;
-            } else if (!hasHighValue) {
-                return midpoint + 1.0;
-            }
-        }
-
-        return null; // No more obvious alternatives
+        // No solver result available
+        System.out.println("🔍 Z3 solver could not generate alternative input");
+        return null;
     }
 
     /**
-     * Generate alternative input using the branch coverage tracker for intelligent exploration.
-     * This method focuses on generating inputs that will explore unexplored branches,
-     * stopping when all branches are covered.
+     * Generate alternative input using the branch coverage tracker and Z3 solver.
+     * This method uses the constraint solver to generate inputs that will explore
+     * unexplored branches, stopping when all branches are covered.
+     *
+     * IMPORTANT: This now uses the Z3 solver for input generation, NOT heuristics.
      */
     private static Double generateAlternativeInputWithTracker(
             List<Double> exploredInputs, List<String> pathConstraints, BranchCoverageTracker tracker) {
@@ -589,18 +581,24 @@ public class ModelTransformationExample {
             int direction = tracker.getUnexploredDirection(threshold);
 
             if (direction < 0) {
-                // Need to explore below threshold
-                double candidate = threshold - 1.0;
-                System.out.println("  → Threshold " + threshold + ": need below branch, generating " + candidate);
-                if (!exploredInputs.contains(candidate)) {
+                // Need to explore below threshold - use solver
+                System.out.println("  → Threshold " + threshold + ": need below branch, asking Z3 solver...");
+                Double candidate = GaletteSymbolicator.generateInputForBranch("thickness", threshold, true);
+                if (candidate != null && !exploredInputs.contains(candidate)) {
+                    System.out.println("  → Z3 solver generated: " + candidate);
                     return candidate;
+                } else if (candidate == null) {
+                    System.out.println("  → Z3 solver returned null (constraint may be unsatisfiable)");
                 }
             } else if (direction > 0) {
-                // Need to explore above threshold
-                double candidate = threshold + 1.0;
-                System.out.println("  → Threshold " + threshold + ": need above branch, generating " + candidate);
-                if (!exploredInputs.contains(candidate)) {
+                // Need to explore above threshold - use solver
+                System.out.println("  → Threshold " + threshold + ": need above branch, asking Z3 solver...");
+                Double candidate = GaletteSymbolicator.generateInputForBranch("thickness", threshold, false);
+                if (candidate != null && !exploredInputs.contains(candidate)) {
+                    System.out.println("  → Z3 solver generated: " + candidate);
                     return candidate;
+                } else if (candidate == null) {
+                    System.out.println("  → Z3 solver returned null (constraint may be unsatisfiable)");
                 }
             } else {
                 System.out.println("  → Threshold " + threshold + ": both branches explored ✓");

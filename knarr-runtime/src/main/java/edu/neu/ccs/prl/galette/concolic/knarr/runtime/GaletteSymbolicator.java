@@ -377,6 +377,133 @@ public class GaletteSymbolicator {
     }
 
     /**
+     * Solve a constraint and return the value for a specific variable.
+     * This is the primary method for solver-based value generation in the exploration loop.
+     *
+     * @param constraint The constraint to solve (e.g., "x > 80.0")
+     * @param variableName The name of the variable to extract from the model
+     * @return The solver-computed value for the variable, or null if unsolvable
+     */
+    public static Double solveConstraintForVariable(Expression constraint, String variableName) {
+        if (constraint == null || variableName == null) {
+            return null;
+        }
+
+        if (DEBUG) {
+            System.out.println("[Solver] Solving constraint for variable '" + variableName + "': " + constraint);
+        }
+
+        // Try external server first if configured
+        if (USE_EXTERNAL_SERVER) {
+            InputSolution externalSolution = sendConstraintToServer(constraint);
+            if (externalSolution != null) {
+                Object value = externalSolution.getValue(variableName);
+                if (value instanceof Number) {
+                    double result = ((Number) value).doubleValue();
+                    if (DEBUG) {
+                        System.out.println("[Solver] External server returned: " + variableName + " = " + result);
+                    }
+                    return result;
+                }
+            }
+        }
+
+        // Try in-process Z3 model extraction
+        InputSolution modelSolution = solveWithGreenModel(constraint);
+        if (modelSolution != null) {
+            Object value = modelSolution.getValue(variableName);
+            if (value instanceof Number) {
+                double result = ((Number) value).doubleValue();
+                if (DEBUG) {
+                    System.out.println("[Solver] Z3 model returned: " + variableName + " = " + result);
+                }
+                return result;
+            }
+            // Try base name without suffix
+            for (String label : modelSolution.getLabels()) {
+                if (label.startsWith(variableName)) {
+                    Object labelValue = modelSolution.getValue(label);
+                    if (labelValue instanceof Number) {
+                        double result = ((Number) labelValue).doubleValue();
+                        if (DEBUG) {
+                            System.out.println("[Solver] Z3 model returned (via " + label + "): " + result);
+                        }
+                        return result;
+                    }
+                }
+            }
+        }
+
+        if (DEBUG) {
+            System.out.println("[Solver] Could not solve constraint for variable: " + variableName);
+        }
+        return null;
+    }
+
+    /**
+     * Generate a constraint for exploring a specific branch direction at a threshold.
+     * This creates the appropriate constraint for the unexplored path.
+     *
+     * @param variableName The symbolic variable name (e.g., "thickness")
+     * @param threshold The threshold value discovered from path constraints
+     * @param exploreBelow True to explore "var < threshold", false for "var >= threshold"
+     * @return A constraint expression for the unexplored branch
+     */
+    public static Expression buildExplorationConstraint(String variableName, double threshold, boolean exploreBelow) {
+        RealVariable var = new RealVariable(variableName, Double.MIN_VALUE, Double.MAX_VALUE);
+        RealConstant thresholdConst = new RealConstant(threshold);
+
+        Expression constraint;
+        if (exploreBelow) {
+            // Explore below: var < threshold
+            constraint = new BinaryOperation(Operation.Operator.LT, var, thresholdConst);
+        } else {
+            // Explore above: var >= threshold
+            constraint = new BinaryOperation(Operation.Operator.GE, var, thresholdConst);
+        }
+
+        if (DEBUG) {
+            System.out.println("[Solver] Built exploration constraint: " + constraint);
+        }
+        return constraint;
+    }
+
+    /**
+     * Generate input for an unexplored branch using the constraint solver.
+     * This is the main entry point for solver-based exploration.
+     *
+     * @param variableName The variable name to generate input for
+     * @param threshold The threshold value at the branch point
+     * @param exploreBelow True to explore below threshold, false for above
+     * @return A solver-computed value, or null if the solver fails
+     */
+    public static Double generateInputForBranch(String variableName, double threshold, boolean exploreBelow) {
+        if (DEBUG) {
+            System.out.println(
+                    "[Solver] Generating input for " + variableName + (exploreBelow ? " < " : " >= ") + threshold);
+        }
+
+        // Build the constraint for the target branch
+        Expression constraint = buildExplorationConstraint(variableName, threshold, exploreBelow);
+
+        // Solve and get the value
+        Double solverValue = solveConstraintForVariable(constraint, variableName);
+
+        if (solverValue != null) {
+            if (DEBUG) {
+                System.out.println("[Solver] Generated input from Z3: " + variableName + " = " + solverValue);
+            }
+            return solverValue;
+        }
+
+        // Solver failed - return null (no heuristic fallback)
+        if (DEBUG) {
+            System.out.println("[Solver] Z3 solver failed to generate input - NO HEURISTIC FALLBACK");
+        }
+        return null;
+    }
+
+    /**
      * Extract variable values from Z3 model using Green's model service.
      * This is the real constraint solving - no heuristics.
      *
@@ -468,13 +595,13 @@ public class GaletteSymbolicator {
 
     /**
      * Attempt solving via Green with Z3 model extraction for real constraint solving.
-     * Falls back to SAT + heuristics if model extraction fails.
+     * NO HEURISTIC FALLBACK - only uses Z3 model extraction.
      * When USE_EXTERNAL_SERVER is true, delegates to external GreenServer process.
      */
     private static InputSolution solveWithGreen(Expression constraint) {
         if (!USE_GREEN_SOLVER) {
             if (DEBUG) {
-                System.out.println("USE_GREEN_SOLVER is not set, falling back to heuristics.");
+                System.out.println("[Green] USE_GREEN_SOLVER is not set, solver disabled.");
             }
             return null;
         }
@@ -482,7 +609,7 @@ public class GaletteSymbolicator {
         // Validate constraint before attempting Green solving
         if (constraint == null) {
             if (DEBUG) {
-                System.out.println("Cannot use Green solver: constraint is null");
+                System.out.println("[Green] Cannot use solver: constraint is null");
             }
             return null;
         }
@@ -498,99 +625,59 @@ public class GaletteSymbolicator {
                 return externalResult;
             }
             if (DEBUG) {
-                System.out.println("[External Server] External server failed, falling back to in-process solver");
+                System.out.println("[External Server] External server failed, trying in-process Z3");
             }
             // Fall through to try in-process model extraction
         }
 
-        // FIRST: Try Z3 model extraction for REAL constraint solving
+        // Use Z3 model extraction for REAL constraint solving - NO HEURISTICS
         InputSolution modelSolution = solveWithGreenModel(constraint);
         if (modelSolution != null) {
             if (DEBUG) {
-                System.out.println("[Green] Using Z3 model extraction result (real constraint solving)");
+                System.out.println("[Green] Z3 model extraction succeeded");
             }
             return modelSolution;
         }
 
-        // FALLBACK: Try SAT check + heuristics if model extraction fails
+        // Z3 model extraction failed - NO HEURISTIC FALLBACK
         if (DEBUG) {
-            System.out.println("[Green] Model extraction failed, falling back to SAT + heuristics");
+            System.out.println("[Green] Z3 model extraction failed - returning null (no heuristic fallback)");
         }
+        return null;
+    }
 
+    /**
+     * @deprecated This method uses heuristics and should not be used.
+     * Use {@link #generateInputForBranch(String, double, boolean)} for solver-based input generation.
+     */
+    @Deprecated
+    @SuppressWarnings("unused")
+    private static InputSolution solveWithGreenSatOnly(Expression constraint) {
+        // SAT-only check without model extraction - DEPRECATED
         Green solver = ensureGreenSolver();
         if (solver == null) {
-            return null; // misconfiguration or missing solver
+            return null;
         }
 
         try {
-            if (DEBUG) {
-                System.out.println("Checking constraint satisfiability with Green SAT: " + constraint);
-            }
-
-            // Use Green SAT solver to validate satisfiability
             Instance instance = new Instance(solver, null, constraint);
-
-            // Validate instance before requesting SAT to avoid Green internal NPEs
             if (instance == null || instance.getExpression() == null || instance.getFullExpression() == null) {
-                if (DEBUG) {
-                    System.out.println(
-                            "[Green] Instance or expressions are null; skipping Green solve and falling back to heuristic");
-                }
                 return null;
-            } else {
-                if (DEBUG) {
-                    System.out.println("[Green] Instance and expressions validated. Full expression: "
-                            + instance.getFullExpression() + ", Expression: " + instance.getExpression());
-                }
             }
 
             Boolean isSatisfiable = (Boolean) instance.request("sat");
 
-            if (DEBUG) {
-                System.out.println("Green SAT result: " + (isSatisfiable != null ? isSatisfiable : "null"));
-            }
-
             if (isSatisfiable != null && isSatisfiable) {
-                // Constraint is satisfiable - use heuristic to generate a solution
-                // (this is the fallback when model extraction didn't work)
-                InputSolution solution = new InputSolution();
-                solution.setValue("satisfiable", "YES");
-                solution.setValue("solver", "green-sat-heuristic-fallback");
-
-                // Generate values using heuristic, but mark them as validated by SAT
-                Map<String, Object> alternatives = generateAlternativeValues(constraint);
-                for (Map.Entry<String, Object> entry : alternatives.entrySet()) {
-                    solution.setValue(entry.getKey(), entry.getValue());
-                }
-
-                if (DEBUG) {
-                    System.out.println("Generated solution with SAT validation + heuristics: " + solution);
-                }
-                return solution;
-            } else if (isSatisfiable == null) {
-                if (DEBUG) {
-                    System.out.println("Green SAT returned null (possibly unsupported constraint)");
-                }
-            } else {
-                if (DEBUG) {
-                    System.out.println("Constraint is unsatisfiable according to Green");
-                }
-            }
-
-            return null;
-        } catch (NullPointerException npe) {
-            // Green's Instance.getFullExpression() can return null in some cases
-            // This is a known issue with Green's internal handling - fall back gracefully
-            System.err.println("Green solver internal issue (NPE): " + npe.getMessage());
-            if (DEBUG) {
-                npe.printStackTrace();
-                System.err.println("Falling back to heuristic solving (Green skipped for this constraint)");
+                // SAT but no model - return empty solution indicating satisfiability
+                InputSolution satOnlySolution = new InputSolution();
+                satOnlySolution.setValue("satisfiable", "YES");
+                satOnlySolution.setValue("solver", "green-sat-only");
+                return satOnlySolution;
             }
             return null;
         } catch (Exception e) {
-            System.err.println("Green solver failed: " + e.getMessage());
             if (DEBUG) {
-                e.printStackTrace();
+                System.err.println("[Green SAT] Failed: " + e.getMessage());
             }
             return null;
         }
@@ -598,15 +685,16 @@ public class GaletteSymbolicator {
 
     /**
      * Solve the current path condition and get a new input.
+     * Uses Z3 model extraction - NO HEURISTIC FALLBACK.
      *
-     * @return New input solution, or null if unsatisfiable
+     * @return New input solution, or null if unsatisfiable or solver unavailable
      */
     public static InputSolution solvePathCondition() {
         try {
             PathConditionWrapper pc = GalettePathUtils.getCurPC();
             if (pc == null || pc.isEmpty()) {
                 if (DEBUG) {
-                    System.out.println("No path constraints to solve");
+                    System.out.println("[Solver] No path constraints to solve");
                 }
                 return null;
             }
@@ -614,39 +702,29 @@ public class GaletteSymbolicator {
             Expression constraint = pc.toSingleExpression();
             if (constraint == null) {
                 if (DEBUG) {
-                    System.out.println(
-                            "Path condition could not be converted to single expression - skipping Green solver");
+                    System.out.println("[Solver] Path condition could not be converted to single expression");
                 }
                 return null;
             }
 
             if (DEBUG) {
-                System.out.println("Solving constraint: " + constraint);
+                System.out.println("[Solver] Solving path condition: " + constraint);
             }
 
-            // Try Green first when enabled
-            InputSolution greenSolution = solveWithGreen(constraint);
-            if (greenSolution != null) {
+            // Use Z3 solver - NO HEURISTIC FALLBACK
+            InputSolution solution = solveWithGreen(constraint);
+            if (solution != null) {
                 if (DEBUG) {
-                    System.out.println("Using Green solver solution");
+                    System.out.println("[Solver] Z3 solution: " + solution);
                 }
-                return greenSolution;
-            } else {
-                if (DEBUG) {
-                    System.out.println("Green solver did not produce a solution; falling back to heuristic extraction");
-                }
+                return solution;
             }
 
-            InputSolution solution = new InputSolution();
-
-            // Extract variable assignments from constraints
-            extractSolutionFromConstraint(constraint, solution);
-
+            // Z3 solver failed or disabled - return null (no heuristics)
             if (DEBUG) {
-                System.out.println("Generated heuristic solution: " + solution);
+                System.out.println("[Solver] Z3 solver returned null - no heuristic fallback");
             }
-
-            return solution;
+            return null;
         } catch (Exception e) {
             System.err.println("Error solving path condition: " + e.getMessage());
             if (DEBUG) {
@@ -659,8 +737,11 @@ public class GaletteSymbolicator {
     /**
      * Extract variable assignments from a constraint expression.
      * Migrated from original Knarr's dynamic constraint solving approach.
-     * This version generates alternative values dynamically without hardcoded thresholds.
+     * @deprecated This method uses heuristics and should not be used.
+     * Use Z3 model extraction via {@link #solveWithGreenModel(Expression)} instead.
      */
+    @Deprecated
+    @SuppressWarnings("unused")
     private static void extractSolutionFromConstraint(Expression constraint, InputSolution solution) {
         try {
             // Generate alternative values using original Knarr's VariableMutator pattern
@@ -683,12 +764,11 @@ public class GaletteSymbolicator {
     }
 
     /**
-     * Generate alternative values by negating current constraints.
-     * Based on original Knarr's VariableMutator approach (lines 128-131):
-     * 1. Find current variable assignments
-     * 2. Create negation constraints (variable != current_value)
-     * 3. Generate satisfying values for negated constraints
+     * @deprecated This method uses heuristics (threshold ± 0.1) and should not be used.
+     * Use {@link #generateInputForBranch(String, double, boolean)} for solver-based input generation.
      */
+    @Deprecated
+    @SuppressWarnings("unused")
     private static Map<String, Object> generateAlternativeValues(Expression constraint) {
         Map<String, Object> alternatives = new HashMap<>();
 
@@ -761,9 +841,11 @@ public class GaletteSymbolicator {
     }
 
     /**
-     * Generate alternative value using original Knarr's negation pattern.
-     * If constraint is "x > threshold", generate value for "x <= threshold" and vice versa.
+     * @deprecated This method uses heuristics (threshold ± 0.1) and should not be used.
+     * Use {@link #generateInputForBranch(String, double, boolean)} for solver-based input generation.
      */
+    @Deprecated
+    @SuppressWarnings("unused")
     private static Double generateAlternativeValue(Expression constraint, String variable, Double threshold) {
         Operation.Operator constraintOp = extractOperatorForVariable(constraint, variable);
 
@@ -995,19 +1077,17 @@ public class GaletteSymbolicator {
                 }
             }
 
-            // If no model values extracted, fall back to heuristics
+            // If no model values extracted, return solution with just SAT status (no heuristics)
             if (solution.getLabels().size() <= 2) { // only "satisfiable" and "solver"
                 if (DEBUG) {
-                    System.out.println("[External Server] No model values in response, using heuristics");
+                    System.out.println("[External Server] No model values in response - NO HEURISTIC FALLBACK");
                 }
-                Map<String, Object> alternatives = generateAlternativeValues(constraint);
-                for (Map.Entry<String, Object> entry : alternatives.entrySet()) {
-                    solution.setValue(entry.getKey(), entry.getValue());
-                }
+                // Return null to indicate solver couldn't provide values
+                return null;
             }
 
             if (DEBUG) {
-                System.out.println("[External Server] Parsed solution: " + solution);
+                System.out.println("[External Server] Parsed solution with model values: " + solution);
             }
             return solution;
 
@@ -1133,19 +1213,15 @@ public class GaletteSymbolicator {
      * Handle legacy single-character response from GreenServer.
      */
     private static InputSolution handleLegacyResponse(char response, Expression constraint) {
-        InputSolution solution = new InputSolution();
-
+        // Legacy protocol only returns SAT/UNSAT - no model values available
+        // Without model values, we cannot generate inputs - return null (no heuristic fallback)
         if (response == '1') {
-            // SAT - constraint is satisfiable
-            solution.setValue("satisfiable", "YES");
-            solution.setValue("solver", "greenserver-legacy-heuristic");
-
-            // Generate alternative values using heuristic (legacy server only returns SAT/UNSAT)
-            Map<String, Object> alternatives = generateAlternativeValues(constraint);
-            for (Map.Entry<String, Object> entry : alternatives.entrySet()) {
-                solution.setValue(entry.getKey(), entry.getValue());
+            // SAT - but legacy protocol doesn't provide model values
+            if (DEBUG) {
+                System.out.println("[External Server] Legacy SAT response - no model values available, NO HEURISTICS");
             }
-            return solution;
+            // Return null because we can't generate useful inputs without Z3 model values
+            return null;
         } else if (response == '0') {
             // UNSAT - constraint is unsatisfiable
             if (DEBUG) {
