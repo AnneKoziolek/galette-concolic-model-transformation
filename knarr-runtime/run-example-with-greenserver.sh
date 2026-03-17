@@ -25,7 +25,7 @@ echo ""
 # ============================================================================
 # Build Configuration Constants
 # ============================================================================
-FORCE_CLEAN_BUILD=false        # Force complete clean rebuild (overrides everything)
+FORCE_CLEAN_BUILD=true        # Force complete clean rebuild (overrides everything)
 FORCE_REBUILD_AGENT=false      # Force rebuild galette-agent JAR only
 FORCE_REBUILD_CLASSES=false    # Force rebuild knarr-runtime Java classes only (intelligent detection by default)
 FORCE_REBUILD_JAVA=false       # Force rebuild instrumented Java installation only (intelligent detection by default)
@@ -301,15 +301,15 @@ start_green_server || {
 
 echo ""
 
-# Rebuild galette-agent if requested
+# Rebuild galette modules if requested (both galette-agent AND galette-instrument)
 if [ "$FORCE_CLEAN_BUILD" = "true" ] || [ "$FORCE_REBUILD_AGENT" = "true" ]; then
-    echo "Rebuilding galette-agent..."
-    (cd ../galette-agent && mvn clean install -DskipTests -q)
+    echo "Rebuilding all galette modules from parent project..."
+    (cd .. && mvn clean install -pl galette-agent,galette-instrument -DskipTests -q)
     if [ $? -ne 0 ]; then
-        echo "Error: Failed to rebuild galette-agent!"
+        echo "Error: Failed to rebuild galette modules!"
         exit 1
     fi
-    echo "galette-agent rebuilt successfully"
+    echo "galette-agent and galette-instrument rebuilt successfully"
     echo ""
 fi
 
@@ -324,6 +324,8 @@ if needs_build; then
     if [ "$FORCE_CLEAN_BUILD" = "true" ]; then
         echo "FORCE_CLEAN_BUILD enabled - removing all build artifacts"
         clean_instrumented_java "target/galette/java" "$CLEANUP_STRATEGY"
+        echo "Cleaning Galette cache directory..."
+        rm -rf target/galette/cache
         echo "Cleaning Maven target directory..."
         mvn clean -q
     elif [ "$FORCE_REBUILD_JAVA" = "true" ] && [ "$USE_INSTRUMENTED_JAVA" = "true" ]; then

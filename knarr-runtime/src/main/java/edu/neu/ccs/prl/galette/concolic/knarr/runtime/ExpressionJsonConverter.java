@@ -55,7 +55,7 @@ public class ExpressionJsonConverter {
         } else if (expr instanceof IntConstant) {
             IntConstant c = (IntConstant) expr;
             sb.append("{\"type\":\"intconst\",\"value\":");
-            sb.append(c.getValue());
+            sb.append(c.getValueLong());
             sb.append("}");
         } else if (expr instanceof RealConstant) {
             RealConstant c = (RealConstant) expr;

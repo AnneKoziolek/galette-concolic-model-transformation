@@ -71,6 +71,11 @@ public class GaletteSymbolicator {
     private static final Object GREEN_INIT_LOCK = new Object();
 
     /**
+     * Separate Green solver instance for model extraction (with Z3 model service).
+     */
+    private static volatile Green greenModelSolver;
+
+    /**
      * Internal class name for bytecode instrumentation.
      */
     public static final String INTERNAL_NAME = "edu/neu/ccs/prl/galette/concolic/knarr/runtime/GaletteSymbolicator";
@@ -321,8 +326,149 @@ public class GaletteSymbolicator {
     }
 
     /**
-     * Attempt solving via Green SAT checker; validates generated values against constraints.
-     * Falls back to heuristic if not enabled or if Green is unavailable.
+     * Initialize Green solver with MODEL service for extracting variable assignments.
+     * This uses Z3's model extraction to get actual satisfying values.
+     */
+    private static Green ensureGreenModelSolver() {
+        if (greenModelSolver != null) {
+            return greenModelSolver;
+        }
+
+        synchronized (GREEN_INIT_LOCK) {
+            if (greenModelSolver != null) {
+                return greenModelSolver;
+            }
+
+            try {
+                if (DEBUG) {
+                    System.out.println("[Green Model] Initializing Green solver with Z3 model extraction");
+                }
+                Green solver = new Green();
+
+                Properties props = new Properties();
+                // Use Z3 Java MODEL pipeline (slice -> canonize -> z3java model)
+                props.setProperty("green.services", "model");
+                props.setProperty("green.service.model", "(slice (canonize z3javamodel))");
+                props.setProperty("green.service.model.slice", "za.ac.sun.cs.green.service.slicer.SATSlicerService");
+                props.setProperty(
+                        "green.service.model.canonize", "za.ac.sun.cs.green.service.canonizer.ModelCanonizerService");
+                props.setProperty(
+                        "green.service.model.z3javamodel", "za.ac.sun.cs.green.service.z3.ModelZ3JavaService");
+                // Timeout in ms for Z3 Java service
+                props.setProperty("green.z3java.timeout", "5000");
+
+                Configuration config = new Configuration(solver, props);
+                config.configure();
+
+                greenModelSolver = solver;
+                if (DEBUG) {
+                    System.out.println("[Green Model] Solver configured with Z3 model extraction");
+                }
+            } catch (Exception e) {
+                System.err.println("Failed to configure Green model solver: " + e.getMessage());
+                if (DEBUG) {
+                    e.printStackTrace();
+                }
+                greenModelSolver = null;
+            }
+
+            return greenModelSolver;
+        }
+    }
+
+    /**
+     * Extract variable values from Z3 model using Green's model service.
+     * This is the real constraint solving - no heuristics.
+     *
+     * @param constraint The constraint to solve
+     * @return InputSolution with actual Z3 model values, or null if unsatisfiable
+     */
+    @SuppressWarnings("unchecked")
+    private static InputSolution solveWithGreenModel(Expression constraint) {
+        Green solver = ensureGreenModelSolver();
+        if (solver == null) {
+            if (DEBUG) {
+                System.out.println("[Green Model] Model solver not available");
+            }
+            return null;
+        }
+
+        try {
+            if (DEBUG) {
+                System.out.println("[Green Model] Solving constraint with Z3 model extraction: " + constraint);
+            }
+
+            Instance instance = new Instance(solver, null, constraint);
+
+            // Request model - returns Map<Variable, Object> with variable assignments
+            Object result = instance.request("model");
+
+            if (result == null) {
+                if (DEBUG) {
+                    System.out.println("[Green Model] Constraint is UNSAT or model extraction failed");
+                }
+                return null;
+            }
+
+            if (!(result instanceof Map)) {
+                if (DEBUG) {
+                    System.out.println("[Green Model] Unexpected result type: "
+                            + result.getClass().getName());
+                }
+                return null;
+            }
+
+            Map<Variable, Object> model = (Map<Variable, Object>) result;
+
+            if (DEBUG) {
+                System.out.println("[Green Model] Z3 returned model with " + model.size() + " variable assignments:");
+                for (Map.Entry<Variable, Object> entry : model.entrySet()) {
+                    System.out.println("  " + entry.getKey().getName() + " = " + entry.getValue());
+                }
+            }
+
+            // Convert model to InputSolution
+            InputSolution solution = new InputSolution();
+            solution.setValue("satisfiable", "YES");
+            solution.setValue("solver", "z3-model-extraction");
+
+            for (Map.Entry<Variable, Object> entry : model.entrySet()) {
+                String varName = entry.getKey().getName();
+                Object value = entry.getValue();
+
+                // Store the actual Z3-computed value
+                solution.setValue(varName, value);
+
+                // Also try to match to the original variable name (without counter suffix)
+                // Variables are created with names like "thickness_0", we need "thickness"
+                int underscoreIdx = varName.lastIndexOf('_');
+                if (underscoreIdx > 0) {
+                    String baseName = varName.substring(0, underscoreIdx);
+                    // Only add base name if it's not already present
+                    if (solution.getValue(baseName) == null) {
+                        solution.setValue(baseName, value);
+                    }
+                }
+            }
+
+            if (DEBUG) {
+                System.out.println("[Green Model] Generated solution from Z3 model: " + solution);
+            }
+
+            return solution;
+
+        } catch (Exception e) {
+            System.err.println("[Green Model] Z3 model extraction failed: " + e.getMessage());
+            if (DEBUG) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Attempt solving via Green with Z3 model extraction for real constraint solving.
+     * Falls back to SAT + heuristics if model extraction fails.
      * When USE_EXTERNAL_SERVER is true, delegates to external GreenServer process.
      */
     private static InputSolution solveWithGreen(Expression constraint) {
@@ -352,9 +498,23 @@ public class GaletteSymbolicator {
                 return externalResult;
             }
             if (DEBUG) {
-                System.out.println("[External Server] External server failed, falling back to heuristics");
+                System.out.println("[External Server] External server failed, falling back to in-process solver");
             }
-            return null; // Don't fall back to in-process Green when external is configured
+            // Fall through to try in-process model extraction
+        }
+
+        // FIRST: Try Z3 model extraction for REAL constraint solving
+        InputSolution modelSolution = solveWithGreenModel(constraint);
+        if (modelSolution != null) {
+            if (DEBUG) {
+                System.out.println("[Green] Using Z3 model extraction result (real constraint solving)");
+            }
+            return modelSolution;
+        }
+
+        // FALLBACK: Try SAT check + heuristics if model extraction fails
+        if (DEBUG) {
+            System.out.println("[Green] Model extraction failed, falling back to SAT + heuristics");
         }
 
         Green solver = ensureGreenSolver();
@@ -364,7 +524,7 @@ public class GaletteSymbolicator {
 
         try {
             if (DEBUG) {
-                System.out.println("Checking constraint satisfiability with Green: " + constraint);
+                System.out.println("Checking constraint satisfiability with Green SAT: " + constraint);
             }
 
             // Use Green SAT solver to validate satisfiability
@@ -392,20 +552,19 @@ public class GaletteSymbolicator {
 
             if (isSatisfiable != null && isSatisfiable) {
                 // Constraint is satisfiable - use heuristic to generate a solution
-                // then validate it makes sense in the context
+                // (this is the fallback when model extraction didn't work)
                 InputSolution solution = new InputSolution();
                 solution.setValue("satisfiable", "YES");
-                // solution.setValue("constraint", constraintStr);
-                solution.setValue("solver", "green-sat-validation");
+                solution.setValue("solver", "green-sat-heuristic-fallback");
 
-                // Generate values using heuristic, but mark them as validated
+                // Generate values using heuristic, but mark them as validated by SAT
                 Map<String, Object> alternatives = generateAlternativeValues(constraint);
                 for (Map.Entry<String, Object> entry : alternatives.entrySet()) {
                     solution.setValue(entry.getKey(), entry.getValue());
                 }
 
                 if (DEBUG) {
-                    System.out.println("Generated solution validated by Green: " + solution);
+                    System.out.println("Generated solution with SAT validation + heuristics: " + solution);
                 }
                 return solution;
             } else if (isSatisfiable == null) {
@@ -732,7 +891,9 @@ public class GaletteSymbolicator {
 
     /**
      * Send constraint to server for solving using GreenServer JSON protocol.
-     * Protocol: JSON expression → single char response ('1'=SAT, '0'=UNSAT, 'E'=Error)
+     * Protocol v2: JSON expression → JSON response with model values
+     * Response format: {"sat":true/false,"model":{"var1":value1,"var2":value2,...}}
+     * Legacy fallback: single char response ('1'=SAT, '0'=UNSAT, 'E'=Error)
      *
      * @param constraint The constraint to solve
      * @return Solution from server, or null if failed
@@ -761,45 +922,242 @@ public class GaletteSymbolicator {
 
             out.println(jsonExpr);
 
-            // Read single character response
-            int response = in.read();
+            // Read response line (new protocol returns JSON with model)
+            String responseLine = in.readLine();
+
+            if (responseLine == null || responseLine.isEmpty()) {
+                if (DEBUG) {
+                    System.out.println("[External Server] Empty response from server");
+                }
+                return null;
+            }
 
             if (DEBUG) {
-                System.out.println("[External Server] GreenServer response: " + (char) response);
+                System.out.println("[External Server] GreenServer response: " + responseLine);
             }
 
-            InputSolution solution = new InputSolution();
-
-            if (response == '1') {
-                // SAT - constraint is satisfiable
-                solution.setValue("satisfiable", "YES");
-                solution.setValue("solver", "greenserver-external");
-
-                // Generate alternative values using heuristic (server only returns SAT/UNSAT)
-                Map<String, Object> alternatives = generateAlternativeValues(constraint);
-                for (Map.Entry<String, Object> entry : alternatives.entrySet()) {
-                    solution.setValue(entry.getKey(), entry.getValue());
-                }
-                return solution;
-            } else if (response == '0') {
-                // UNSAT - constraint is unsatisfiable
-                if (DEBUG) {
-                    System.out.println("[External Server] Constraint is UNSAT");
-                }
-                return null;
-            } else if (response == 'E') {
-                // Error from server
-                System.err.println("[External Server] GreenServer returned error for constraint");
-                return null;
+            // Check if response is JSON (new protocol) or single char (legacy)
+            if (responseLine.startsWith("{")) {
+                // New JSON protocol with model extraction
+                return parseJsonModelResponse(responseLine, constraint);
             } else {
-                System.err.println("[External Server] Unexpected response from GreenServer: " + (char) response);
-                return null;
+                // Legacy single-char protocol fallback
+                char response = responseLine.charAt(0);
+                return handleLegacyResponse(response, constraint);
             }
+
         } catch (Exception e) {
             System.err.println("[External Server] Error communicating with GreenServer: " + e.getMessage());
             if (DEBUG) {
                 e.printStackTrace();
             }
+            return null;
+        }
+    }
+
+    /**
+     * Parse JSON model response from GreenServer.
+     * Format: {"sat":true,"model":{"var1":value1,"var2":value2,...}}
+     */
+    private static InputSolution parseJsonModelResponse(String json, Expression constraint) {
+        try {
+            // Simple JSON parsing for model response
+            if (!json.contains("\"sat\"")) {
+                if (DEBUG) {
+                    System.out.println("[External Server] Invalid JSON response: missing 'sat' field");
+                }
+                return null;
+            }
+
+            boolean isSat = json.contains("\"sat\":true") || json.contains("\"sat\": true");
+
+            if (!isSat) {
+                if (DEBUG) {
+                    System.out.println("[External Server] Constraint is UNSAT");
+                }
+                return null;
+            }
+
+            InputSolution solution = new InputSolution();
+            solution.setValue("satisfiable", "YES");
+            solution.setValue("solver", "greenserver-z3-model");
+
+            // Extract model values from JSON
+            int modelStart = json.indexOf("\"model\"");
+            if (modelStart >= 0) {
+                int braceStart = json.indexOf("{", modelStart);
+                if (braceStart >= 0) {
+                    int braceEnd = findMatchingBrace(json, braceStart);
+                    if (braceEnd > braceStart) {
+                        String modelJson = json.substring(braceStart, braceEnd + 1);
+                        parseModelValues(modelJson, solution);
+                    }
+                }
+            }
+
+            // If no model values extracted, fall back to heuristics
+            if (solution.getLabels().size() <= 2) { // only "satisfiable" and "solver"
+                if (DEBUG) {
+                    System.out.println("[External Server] No model values in response, using heuristics");
+                }
+                Map<String, Object> alternatives = generateAlternativeValues(constraint);
+                for (Map.Entry<String, Object> entry : alternatives.entrySet()) {
+                    solution.setValue(entry.getKey(), entry.getValue());
+                }
+            }
+
+            if (DEBUG) {
+                System.out.println("[External Server] Parsed solution: " + solution);
+            }
+            return solution;
+
+        } catch (Exception e) {
+            System.err.println("[External Server] Error parsing JSON response: " + e.getMessage());
+            if (DEBUG) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Find the matching closing brace for an opening brace.
+     */
+    private static int findMatchingBrace(String json, int openPos) {
+        int depth = 1;
+        for (int i = openPos + 1; i < json.length(); i++) {
+            char c = json.charAt(i);
+            if (c == '{') depth++;
+            else if (c == '}') {
+                depth--;
+                if (depth == 0) return i;
+            } else if (c == '"') {
+                // Skip string content
+                i++;
+                while (i < json.length() && json.charAt(i) != '"') {
+                    if (json.charAt(i) == '\\') i++;
+                    i++;
+                }
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Parse model values from JSON object string.
+     * Format: {"var1":value1,"var2":value2,...}
+     */
+    private static void parseModelValues(String modelJson, InputSolution solution) {
+        // Remove outer braces
+        String content = modelJson.substring(1, modelJson.length() - 1).trim();
+        if (content.isEmpty()) return;
+
+        // Split by comma (simple parsing, assumes no nested objects in values)
+        int pos = 0;
+        while (pos < content.length()) {
+            // Skip whitespace
+            while (pos < content.length() && Character.isWhitespace(content.charAt(pos))) pos++;
+            if (pos >= content.length()) break;
+
+            // Parse key
+            if (content.charAt(pos) != '"') break;
+            int keyStart = pos + 1;
+            int keyEnd = content.indexOf('"', keyStart);
+            if (keyEnd < 0) break;
+            String key = content.substring(keyStart, keyEnd);
+            pos = keyEnd + 1;
+
+            // Skip to colon
+            while (pos < content.length() && content.charAt(pos) != ':') pos++;
+            if (pos >= content.length()) break;
+            pos++; // skip colon
+
+            // Skip whitespace
+            while (pos < content.length() && Character.isWhitespace(content.charAt(pos))) pos++;
+            if (pos >= content.length()) break;
+
+            // Parse value
+            Object value = null;
+            if (content.charAt(pos) == '"') {
+                // String value
+                int valStart = pos + 1;
+                int valEnd = content.indexOf('"', valStart);
+                if (valEnd >= 0) {
+                    value = content.substring(valStart, valEnd);
+                    pos = valEnd + 1;
+                }
+            } else {
+                // Numeric or boolean value
+                int valStart = pos;
+                while (pos < content.length() && content.charAt(pos) != ',' && content.charAt(pos) != '}') {
+                    pos++;
+                }
+                String valStr = content.substring(valStart, pos).trim();
+                if (valStr.equals("true")) value = true;
+                else if (valStr.equals("false")) value = false;
+                else if (valStr.equals("null")) value = null;
+                else {
+                    try {
+                        if (valStr.contains(".") || valStr.contains("e") || valStr.contains("E")) {
+                            value = Double.parseDouble(valStr);
+                        } else {
+                            value = Long.parseLong(valStr);
+                        }
+                    } catch (NumberFormatException e) {
+                        value = valStr;
+                    }
+                }
+            }
+
+            if (key != null && value != null) {
+                solution.setValue(key, value);
+                // Also add base name without suffix
+                int underscoreIdx = key.lastIndexOf('_');
+                if (underscoreIdx > 0) {
+                    String baseName = key.substring(0, underscoreIdx);
+                    if (solution.getValue(baseName) == null) {
+                        solution.setValue(baseName, value);
+                    }
+                }
+            }
+
+            // Skip comma
+            while (pos < content.length()
+                    && (content.charAt(pos) == ',' || Character.isWhitespace(content.charAt(pos)))) {
+                pos++;
+            }
+        }
+    }
+
+    /**
+     * Handle legacy single-character response from GreenServer.
+     */
+    private static InputSolution handleLegacyResponse(char response, Expression constraint) {
+        InputSolution solution = new InputSolution();
+
+        if (response == '1') {
+            // SAT - constraint is satisfiable
+            solution.setValue("satisfiable", "YES");
+            solution.setValue("solver", "greenserver-legacy-heuristic");
+
+            // Generate alternative values using heuristic (legacy server only returns SAT/UNSAT)
+            Map<String, Object> alternatives = generateAlternativeValues(constraint);
+            for (Map.Entry<String, Object> entry : alternatives.entrySet()) {
+                solution.setValue(entry.getKey(), entry.getValue());
+            }
+            return solution;
+        } else if (response == '0') {
+            // UNSAT - constraint is unsatisfiable
+            if (DEBUG) {
+                System.out.println("[External Server] Constraint is UNSAT (legacy protocol)");
+            }
+            return null;
+        } else if (response == 'E') {
+            // Error from server
+            System.err.println("[External Server] GreenServer returned error for constraint (legacy protocol)");
+            return null;
+        } else {
+            System.err.println("[External Server] Unexpected response from GreenServer: " + response);
             return null;
         }
     }
