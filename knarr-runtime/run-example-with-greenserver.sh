@@ -105,6 +105,26 @@ GREEN_SERVER_PID=""
 # Z3-turnkey from Maven (includes native libraries for Linux)
 Z3_TURNKEY_JAR="$HOME/.m2/repository/io/github/tudo-aqua/z3-turnkey/4.8.14/z3-turnkey-4.8.14.jar"
 
+# Auto-download z3-turnkey if missing (needed in Codespaces / fresh environments)
+if [ ! -f "$Z3_TURNKEY_JAR" ]; then
+    echo "Z3-turnkey JAR not found — resolving via Maven..."
+    if [ -f "$GREEN_SOLVER_ROOT/green/pom.xml" ]; then
+        (cd "$GREEN_SOLVER_ROOT/green" && mvn dependency:resolve -DincludeArtifactIds=z3-turnkey -q 2>&1) || true
+    fi
+    if [ ! -f "$Z3_TURNKEY_JAR" ]; then
+        # Direct download fallback
+        echo "   Maven resolve failed — downloading z3-turnkey directly..."
+        mkdir -p "$(dirname "$Z3_TURNKEY_JAR")"
+        curl -sL "https://repo1.maven.org/maven2/io/github/tudo-aqua/z3-turnkey/4.8.14/z3-turnkey-4.8.14.jar" \
+            -o "$Z3_TURNKEY_JAR" 2>/dev/null || true
+    fi
+    if [ -f "$Z3_TURNKEY_JAR" ]; then
+        echo "   Z3-turnkey JAR resolved successfully"
+    else
+        echo "   Warning: Could not obtain z3-turnkey JAR — GreenServer may fail to start"
+    fi
+fi
+
 # Cleanup strategy for instrumented Java (when rebuilding)
 CLEANUP_STRATEGY="safe"
 
