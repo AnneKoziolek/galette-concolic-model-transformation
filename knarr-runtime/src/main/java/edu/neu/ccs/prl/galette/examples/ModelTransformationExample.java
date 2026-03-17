@@ -355,7 +355,24 @@ public class ModelTransformationExample {
                 }
             }
 
+            // Determine the threshold value: it's the numeric side of the comparison.
+            // The other side may be a symbolic variable name (e.g., "thickness_1").
+            Double threshold = null;
             if (leftValue != null && rightValue != null) {
+                // Both are numeric — threshold is the right (constant) side
+                threshold = rightValue;
+            } else if (leftValue == null && rightValue != null) {
+                // Left is symbolic variable, right is the threshold
+                threshold = rightValue;
+            } else if (leftValue != null && rightValue == null) {
+                // Left is the threshold, right is symbolic — swap direction
+                threshold = leftValue;
+                boolean swap = isLessThan;
+                isLessThan = isGreaterThan;
+                isGreaterThan = swap;
+            }
+
+            if (threshold != null) {
                 // For ==, the DCMPL result was 0, meaning value equals threshold.
                 // This is the "equal" case of the comparison; record it as the
                 // above/equal branch (since the code checks thickness > threshold,
@@ -363,7 +380,7 @@ public class ModelTransformationExample {
                 if (isEqual) {
                     isLessThan = true; // value == threshold means "not greater than"
                 }
-                recordBranchCoverage(rightValue, isLessThan, isGreaterThan);
+                recordBranchCoverage(threshold, isLessThan, isGreaterThan);
             }
         }
 

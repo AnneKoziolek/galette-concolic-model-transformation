@@ -8,18 +8,74 @@
 #   USE_INSTRUMENTED_JAVA - Enable/disable Galette bytecode instrumentation
 #   USE_GREEN_SOLVER      - Enable/disable Green constraint solver
 #   USE_EXTERNAL_GREEN_SERVER - Use external GreenServer (recommended)
+#
+# Usage:
+#   ./run-example-with-greenserver.sh              # Local (Anne's machine)
+#   ./run-example-with-greenserver.sh --codespaces # GitHub Codespaces
 
 set -e  # Exit on any error
 
-# Ensure Java 17 is used for builds and execution
-export JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"
-export PATH="$JAVA_HOME/bin:$PATH"
+# ============================================================================
+# Environment Detection: --codespaces flag or auto-detect
+# ============================================================================
+CODESPACES_MODE=false
+for arg in "$@"; do
+    if [ "$arg" = "--codespaces" ]; then
+        CODESPACES_MODE=true
+        # Remove --codespaces from args so it doesn't get passed to the Java app
+        set -- "${@/--codespaces/}"
+        break
+    fi
+done
+
+# Auto-detect Codespaces if not explicitly set
+if [ "$CODESPACES_MODE" = "false" ] && [ -n "$CODESPACE_NAME" ]; then
+    echo "Auto-detected GitHub Codespaces environment"
+    CODESPACES_MODE=true
+fi
+
+# ============================================================================
+# Path Configuration (environment-dependent)
+# ============================================================================
+if [ "$CODESPACES_MODE" = "true" ]; then
+    echo "Running in Codespaces mode"
+    # Codespaces: project is under /workspaces/research-agent-workspace/workspaces/projects/
+    WORKSPACE_ROOT="/workspaces/research-agent-workspace/workspaces/projects"
+    GREEN_SOLVER_ROOT="$WORKSPACE_ROOT/green-solver"
+
+    # Java 17 via SDKMAN in Codespaces
+    if [ -d "/usr/local/sdkman/candidates/java/current" ]; then
+        export JAVA_HOME="/usr/local/sdkman/candidates/java/current"
+    elif [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
+        export JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"
+    fi
+    export PATH="$JAVA_HOME/bin:$PATH"
+
+    # Java 21 for GreenServer — install if needed
+    GREEN_SERVER_JAVA_HOME="/usr/lib/jvm/java-21-openjdk-amd64"
+    if [ ! -d "$GREEN_SERVER_JAVA_HOME" ]; then
+        echo "Installing Java 21 for GreenServer (one-time setup)..."
+        sudo apt-get update -qq && sudo apt-get install -y -qq openjdk-21-jdk-headless > /dev/null 2>&1
+        echo "   Java 21 installed"
+    fi
+else
+    # Local (Anne's machine): original paths
+    WORKSPACE_ROOT="/home/anne/CocoPath"
+    GREEN_SOLVER_ROOT="$WORKSPACE_ROOT/green-solver"
+    export JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"
+    export PATH="$JAVA_HOME/bin:$PATH"
+    GREEN_SERVER_JAVA_HOME="/usr/lib/jvm/java-21-openjdk-amd64"
+fi
 
 echo "GreenServer + Galette Knarr Runtime Example"
 echo "============================================"
 echo "Java Configuration:"
 echo "   JAVA_HOME: $JAVA_HOME"
 echo "   Java version: $(java -version 2>&1 | head -1)"
+if [ "$CODESPACES_MODE" = "true" ]; then
+    echo "   Environment: GitHub Codespaces"
+    echo "   Workspace root: $WORKSPACE_ROOT"
+fi
 echo ""
 
 # ============================================================================
@@ -43,11 +99,9 @@ USE_EXTERNAL_GREEN_SERVER=true # Use external GreenServer process
 # GreenServer Configuration
 # ============================================================================
 GREEN_SERVER_PORT=9408
-GREEN_SERVER_DIR="/home/anne/CocoPath/green-solver/greenserver"
-GREEN_SERVER_GREEN_LIB="/home/anne/CocoPath/green-solver/green/lib"
+GREEN_SERVER_DIR="$GREEN_SOLVER_ROOT/greenserver"
+GREEN_SERVER_GREEN_LIB="$GREEN_SOLVER_ROOT/green/lib"
 GREEN_SERVER_PID=""
-# GreenServer requires Java 21 (green.jar compiled with class version 65.0)
-GREEN_SERVER_JAVA_HOME="/usr/lib/jvm/java-21-openjdk-amd64"
 # Z3-turnkey from Maven (includes native libraries for Linux)
 Z3_TURNKEY_JAR="$HOME/.m2/repository/io/github/tudo-aqua/z3-turnkey/4.8.14/z3-turnkey-4.8.14.jar"
 
@@ -78,15 +132,51 @@ build_green_server() {
     local original_dir=$(pwd)
     cd "$GREEN_SERVER_DIR"
 
-    # Compile with Java 21 against Maven green.jar (same version as knarr-runtime)
+    # Find green.jar: prefer Maven repo, fall back to greenserver/lib, then build from source
+    local GREEN_JAR=""
     local MAVEN_GREEN_JAR="$HOME/.m2/repository/za/ac/sun/cs/green/green/1.0-SNAPSHOT/green-1.0-SNAPSHOT.jar"
-    "$GREEN_SERVER_JAVA_HOME/bin/javac" -cp "$MAVEN_GREEN_JAR" -d bin \
+    local MAVEN_GREEN_JAR_ALT="$HOME/.m2/repository/edu/gmu/swe/greensolver/green/1.0-SNAPSHOT/green-1.0-SNAPSHOT.jar"
+    local LOCAL_GREEN_JAR="$GREEN_SERVER_DIR/lib/green.jar"
+
+    if [ -f "$MAVEN_GREEN_JAR" ]; then
+        GREEN_JAR="$MAVEN_GREEN_JAR"
+    elif [ -f "$MAVEN_GREEN_JAR_ALT" ]; then
+        GREEN_JAR="$MAVEN_GREEN_JAR_ALT"
+    elif [ -f "$LOCAL_GREEN_JAR" ]; then
+        GREEN_JAR="$LOCAL_GREEN_JAR"
+        echo "   Using local green.jar from $LOCAL_GREEN_JAR"
+    else
+        # Try to build green from source and install to Maven repo
+        echo "   green.jar not found in Maven repo — building from source..."
+        if [ -f "$GREEN_SOLVER_ROOT/green/pom.xml" ]; then
+            (cd "$GREEN_SOLVER_ROOT/green" && mvn install -DskipTests -q 2>&1) || {
+                echo "   Error: Failed to build green from source"
+                cd "$original_dir"
+                return 1
+            }
+            if [ -f "$MAVEN_GREEN_JAR_ALT" ]; then
+                GREEN_JAR="$MAVEN_GREEN_JAR_ALT"
+            elif [ -f "$MAVEN_GREEN_JAR" ]; then
+                GREEN_JAR="$MAVEN_GREEN_JAR"
+            fi
+        fi
+    fi
+
+    if [ -z "$GREEN_JAR" ]; then
+        echo "   Error: Cannot find or build green.jar"
+        cd "$original_dir"
+        return 1
+    fi
+
+    echo "   Using green.jar: $GREEN_JAR"
+    mkdir -p bin
+    "$GREEN_SERVER_JAVA_HOME/bin/javac" -cp "$GREEN_JAR" -d bin \
         src/za/ac/sun/cs/green/server/GreenServer.java 2>&1
     local result=$?
     cd "$original_dir"
 
     if [ $result -eq 0 ]; then
-        echo "   GreenServer built successfully (using Maven green.jar)"
+        echo "   GreenServer built successfully"
     else
         echo "   Error: GreenServer build failed"
     fi
@@ -101,8 +191,8 @@ start_green_server() {
 
     echo "Starting GreenServer on port $GREEN_SERVER_PORT..."
 
-    # Check if GreenServer is built
-    if [ ! -d "$GREEN_SERVER_DIR/bin" ] || [ -z "$(ls -A $GREEN_SERVER_DIR/bin 2>/dev/null)" ]; then
+    # Check if GreenServer is built (look for actual .class files, not just directories)
+    if ! find "$GREEN_SERVER_DIR/bin" -name "*.class" 2>/dev/null | grep -q .; then
         build_green_server || return 1
     fi
 
@@ -112,11 +202,28 @@ start_green_server() {
     cd "$GREEN_SERVER_DIR"
 
     # Build classpath with Z3-turnkey (includes native libs) and other dependencies
-    # IMPORTANT: Use the same green.jar from Maven that knarr-runtime uses to avoid serialVersionUID mismatch
+    # Find green.jar (same logic as build_green_server)
+    local GREEN_JAR=""
     local MAVEN_GREEN_JAR="$HOME/.m2/repository/za/ac/sun/cs/green/green/1.0-SNAPSHOT/green-1.0-SNAPSHOT.jar"
-    local GREEN_CP="bin:$MAVEN_GREEN_JAR:$Z3_TURNKEY_JAR"
-    GREEN_CP="$GREEN_CP:$GREEN_SERVER_GREEN_LIB/slf4j-api-1.7.12.jar"
-    GREEN_CP="$GREEN_CP:$GREEN_SERVER_GREEN_LIB/slf4j-simple-1.7.12.jar"
+    local MAVEN_GREEN_JAR_ALT="$HOME/.m2/repository/edu/gmu/swe/greensolver/green/1.0-SNAPSHOT/green-1.0-SNAPSHOT.jar"
+    local LOCAL_GREEN_JAR="$GREEN_SERVER_DIR/lib/green.jar"
+    if [ -f "$MAVEN_GREEN_JAR" ]; then GREEN_JAR="$MAVEN_GREEN_JAR";
+    elif [ -f "$MAVEN_GREEN_JAR_ALT" ]; then GREEN_JAR="$MAVEN_GREEN_JAR_ALT";
+    elif [ -f "$LOCAL_GREEN_JAR" ]; then GREEN_JAR="$LOCAL_GREEN_JAR";
+    fi
+    local GREEN_CP="bin:$GREEN_JAR:$Z3_TURNKEY_JAR"
+
+    # Find SLF4J jars — check greenserver lib, then green lib, then Maven repo
+    local SLF4J_API="" SLF4J_SIMPLE=""
+    for dir in "$GREEN_SERVER_GREEN_LIB" "$GREEN_SOLVER_ROOT/green/lib"; do
+        [ -z "$SLF4J_API" ] && [ -f "$dir/slf4j-api-1.7.12.jar" ] && SLF4J_API="$dir/slf4j-api-1.7.12.jar"
+        [ -z "$SLF4J_SIMPLE" ] && [ -f "$dir/slf4j-simple-1.7.12.jar" ] && SLF4J_SIMPLE="$dir/slf4j-simple-1.7.12.jar"
+    done
+    # Fall back to any SLF4J in Maven repo
+    [ -z "$SLF4J_API" ] && SLF4J_API=$(find "$HOME/.m2/repository/org/slf4j/slf4j-api" -name "slf4j-api-*.jar" 2>/dev/null | head -1)
+    [ -z "$SLF4J_SIMPLE" ] && SLF4J_SIMPLE=$(find "$HOME/.m2/repository/org/slf4j/slf4j-simple" -name "slf4j-simple-*.jar" 2>/dev/null | head -1)
+    [ -n "$SLF4J_API" ] && GREEN_CP="$GREEN_CP:$SLF4J_API"
+    [ -n "$SLF4J_SIMPLE" ] && GREEN_CP="$GREEN_CP:$SLF4J_SIMPLE"
 
     echo "   Starting with: $GREEN_SERVER_JAVA_HOME/bin/java (Java 21 required)"
     echo "   Classpath includes Z3-turnkey for native Z3 support"
@@ -304,7 +411,12 @@ echo ""
 # Rebuild galette modules if requested (both galette-agent AND galette-instrument)
 if [ "$FORCE_CLEAN_BUILD" = "true" ] || [ "$FORCE_REBUILD_AGENT" = "true" ]; then
     echo "Rebuilding all galette modules from parent project..."
-    (cd .. && mvn clean install -pl galette-agent,galette-instrument -DskipTests -q)
+    if [ "$CODESPACES_MODE" = "true" ]; then
+        # In Codespaces: skip source plugin (duplicate execution issue) and use install
+        (cd .. && mvn clean install -pl galette-agent,galette-instrument -DskipTests -Dmaven.source.skip=true -q)
+    else
+        (cd .. && mvn clean install -pl galette-agent,galette-instrument -DskipTests -q)
+    fi
     if [ $? -ne 0 ]; then
         echo "Error: Failed to rebuild galette modules!"
         exit 1
@@ -327,30 +439,38 @@ if needs_build; then
         echo "Cleaning Galette cache directory..."
         rm -rf target/galette/cache
         echo "Cleaning Maven target directory..."
-        mvn clean -q
+        rm -rf target
     elif [ "$FORCE_REBUILD_JAVA" = "true" ] && [ "$USE_INSTRUMENTED_JAVA" = "true" ]; then
         echo "FORCE_REBUILD_JAVA enabled - removing only instrumented Java"
         clean_instrumented_java "target/galette/java" "$CLEANUP_STRATEGY"
     else
         echo "Cleaning Maven target directory..."
-        mvn clean -q
+        rm -rf target
     fi
 
     if [ "$FORCE_CLEAN_BUILD" = "true" ] || [ "$FORCE_REBUILD_CLASSES" = "true" ] || [ ! -f "target/classes/edu/neu/ccs/prl/galette/examples/ModelTransformationExample.class" ]; then
         echo "Compiling Java classes..."
-        mvn compile -q
+        if [ "$CODESPACES_MODE" = "true" ]; then
+            # In Codespaces: use compiler:compile to skip the galette instrument phase
+            # (jlink instrumentation requires a specific JDK setup)
+            mvn compiler:compile -q
+        else
+            mvn compile -q
+        fi
     fi
 
     # Only create instrumented Java if USE_INSTRUMENTED_JAVA is enabled
     if [ "$USE_INSTRUMENTED_JAVA" = "true" ]; then
+        # Clean any leftover partial instrumented Java (jlink fails if dir exists)
+        rm -rf target/galette/java
         echo "Creating instrumented Java installation via process-resources phase..."
-        mvn process-resources -q
-
-        if [ $? -ne 0 ]; then
-            echo "Error: Build failed!"
-            exit 1
+        if mvn process-resources -q; then
+            echo "Build completed successfully with instrumentation"
+        else
+            echo "Warning: Instrumented Java creation failed."
+            echo "   Falling back to non-instrumented execution (Galette agent still active)."
+            USE_INSTRUMENTED_JAVA=false
         fi
-        echo "Build completed successfully with instrumentation"
     else
         echo "Build completed (no instrumentation)"
     fi

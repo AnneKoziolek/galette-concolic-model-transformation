@@ -211,6 +211,9 @@ public class GaletteSymbolicator {
             tagToExpression.put(symbolicTag, var);
             valueToTag.put(taggedValue, symbolicTag);
 
+            // Register with the bridge so constraint conversion can identify this value as symbolic
+            GalettePathConstraintBridge.registerSymbolicDouble(label, concreteValue);
+
             if (DEBUG) {
                 System.out.println("Created symbolic double with Galette tagging: " + label + " = " + concreteValue);
             }
@@ -1247,6 +1250,7 @@ public class GaletteSymbolicator {
         mySoln = null;
         GaletteGreenBridge.clearVariableCache();
         GalettePathUtils.reset();
+        GalettePathConstraintBridge.clearSymbolicRegistry();
 
         if (DEBUG) {
             System.out.println("Reset GaletteSymbolicator state");

@@ -21,6 +21,35 @@ public class GalettePathConstraintBridge {
     private static Method getCurrentMethod;
     private static Method flushMethod;
 
+    /**
+     * Registry mapping concrete double values to their symbolic variable names.
+     * Populated by GaletteSymbolicator.makeSymbolicDouble() so that constraints
+     * involving these values can be recognized as symbolic during conversion.
+     */
+    private static final java.util.concurrent.ConcurrentHashMap<Double, String> symbolicDoubleRegistry =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * Register a concrete double value as symbolic with the given variable name.
+     */
+    public static void registerSymbolicDouble(String variableName, double concreteValue) {
+        symbolicDoubleRegistry.put(concreteValue, variableName);
+    }
+
+    /**
+     * Clear the symbolic value registry (called at the start of each iteration).
+     */
+    public static void clearSymbolicRegistry() {
+        symbolicDoubleRegistry.clear();
+    }
+
+    /**
+     * Look up a symbolic variable name for a concrete double value.
+     */
+    static String getSymbolicVariableName(double concreteValue) {
+        return symbolicDoubleRegistry.get(concreteValue);
+    }
+
     static {
         try {
             System.out.println("🔧 GalettePathConstraintBridge: Attempting to load Galette PathConstraintAPI...");
@@ -141,8 +170,7 @@ public class GalettePathConstraintBridge {
         }
         if (expr instanceof BinaryOperation) {
             BinaryOperation binOp = (BinaryOperation) expr;
-            return containsSymbolicVariable(binOp.left)
-                    || containsSymbolicVariable(binOp.right);
+            return containsSymbolicVariable(binOp.left) || containsSymbolicVariable(binOp.right);
         }
         if (expr instanceof UnaryOperation) {
             return containsSymbolicVariable(((UnaryOperation) expr).operand);
@@ -186,14 +214,8 @@ public class GalettePathConstraintBridge {
         if (value instanceof Double || value instanceof Float) {
             double doubleVal = value instanceof Float ? (Float) value : (Double) value;
 
-            // Try to get the variable name from ModelTransformationExample
-            try {
-                Class<?> exampleClass = Class.forName("edu.neu.ccs.prl.galette.examples.ModelTransformationExample");
-                Method getNameMethod = exampleClass.getMethod("getSymbolicVariableName", double.class);
-                variableName = (String) getNameMethod.invoke(null, doubleVal);
-            } catch (Exception e) {
-                // Class or method not available - continue without variable name
-            }
+            // Look up the symbolic variable name from the registry
+            variableName = getSymbolicVariableName(doubleVal);
 
             if (variableName != null) {
                 // This is a symbolic value with a known variable name

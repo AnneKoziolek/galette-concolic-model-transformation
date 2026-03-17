@@ -59,12 +59,9 @@ public final class Patcher {
                 writeEntry(zos, entry, content);
             }
         }
-        if (archive.exists() && !archive.delete()) {
-            throw new IOException("Failed to delete unpatched archive: " + archive);
-        }
-        if (!temp.renameTo(archive)) {
-            throw new IOException("Failed to move patched JAR: " + temp);
-        }
+        // Use Files.move instead of File.renameTo to handle cross-filesystem moves
+        // (e.g., /tmp on a different filesystem than the workspace)
+        Files.move(temp.toPath(), archive.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
     }
 
     private static void writeEntry(ZipOutputStream zos, ZipEntry entry, byte[] content) throws IOException {
