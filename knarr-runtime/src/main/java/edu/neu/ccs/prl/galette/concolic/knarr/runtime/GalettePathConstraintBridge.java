@@ -180,6 +180,11 @@ public class GalettePathConstraintBridge {
 
     /**
      * Convert a single Galette Constraint to a Green Expression.
+     *
+     * When both operands have the same concrete value (e.g., thickness=90.0
+     * compared against threshold=90.0), only the first operand that maps to
+     * a symbolic variable is treated as symbolic; the other is a constant.
+     * This prevents tautological constraints like "thickness == thickness".
      */
     private static Expression convertSingleConstraint(Object constraint) throws Exception {
         // Use reflection to access Constraint fields
@@ -189,9 +194,12 @@ public class GalettePathConstraintBridge {
         String operation = (String) constraintClass.getField("operation").get(constraint);
         int result = (Integer) constraintClass.getField("result").get(constraint);
 
-        // Convert operands to Green expressions
-        Expression leftExpr = convertValue(value1, "left");
-        Expression rightExpr = convertValue(value2, "right");
+        // Determine which operand is symbolic: only one per constraint.
+        // The left operand (value1) is checked first; if it is symbolic,
+        // the right operand is always treated as a constant.
+        boolean leftIsSymbolic = isSymbolicValue(value1);
+        Expression leftExpr = leftIsSymbolic ? convertValueAsSymbolic(value1) : convertValueAsConstant(value1);
+        Expression rightExpr = leftIsSymbolic ? convertValueAsConstant(value2) : convertValue(value2, "right");
 
         if (leftExpr == null || rightExpr == null) {
             return null;
@@ -199,6 +207,43 @@ public class GalettePathConstraintBridge {
 
         // Create appropriate Green operation
         return createGreenOperation(leftExpr, rightExpr, operation, result);
+    }
+
+    /**
+     * Check if a value is registered as a symbolic variable.
+     */
+    private static boolean isSymbolicValue(Object value) {
+        if (value instanceof Double || value instanceof Float) {
+            double doubleVal = value instanceof Float ? (Float) value : (Double) value;
+            return getSymbolicVariableName(doubleVal) != null;
+        }
+        return false;
+    }
+
+    /**
+     * Convert a value that is known to be symbolic to a RealVariable.
+     */
+    private static Expression convertValueAsSymbolic(Object value) {
+        double doubleVal = value instanceof Float ? (Float) value : (Double) value;
+        String variableName = getSymbolicVariableName(doubleVal);
+        System.out.println("🎯 Found symbolic variable: " + variableName + " for value " + doubleVal);
+        return new RealVariable(variableName, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY);
+    }
+
+    /**
+     * Convert a value to a constant expression (never as a symbolic variable).
+     */
+    private static Expression convertValueAsConstant(Object value) {
+        if (value instanceof Double || value instanceof Float) {
+            double doubleVal = value instanceof Float ? (Float) value : (Double) value;
+            return new RealConstant(doubleVal);
+        } else if (value instanceof Integer) {
+            return new IntConstant((Integer) value);
+        } else if (value instanceof Long) {
+            long longVal = (Long) value;
+            return new IntConstant((int) Math.max(Integer.MIN_VALUE, Math.min(Integer.MAX_VALUE, longVal)));
+        }
+        return null;
     }
 
     /**

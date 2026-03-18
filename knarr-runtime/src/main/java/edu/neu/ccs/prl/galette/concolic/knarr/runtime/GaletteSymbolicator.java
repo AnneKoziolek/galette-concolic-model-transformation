@@ -400,6 +400,13 @@ public class GaletteSymbolicator {
         if (USE_EXTERNAL_SERVER) {
             InputSolution externalSolution = sendConstraintToServer(constraint);
             if (externalSolution != null) {
+                if (!externalSolution.isSatisfiable()) {
+                    // GreenServer definitively determined UNSAT — do not fall through
+                    if (DEBUG) {
+                        System.out.println("[Solver] External server: UNSAT for " + variableName);
+                    }
+                    return null;
+                }
                 Object value = externalSolution.getValue(variableName);
                 if (value instanceof Number) {
                     double result = ((Number) value).doubleValue();
@@ -411,7 +418,7 @@ public class GaletteSymbolicator {
             }
         }
 
-        // Try in-process Z3 model extraction
+        // Try in-process Z3 model extraction (fallback when external server unavailable)
         InputSolution modelSolution = solveWithGreenModel(constraint);
         if (modelSolution != null) {
             Object value = modelSolution.getValue(variableName);
@@ -439,6 +446,106 @@ public class GaletteSymbolicator {
 
         if (DEBUG) {
             System.out.println("[Solver] Could not solve constraint for variable: " + variableName);
+        }
+        return null;
+    }
+
+    /**
+     * Negate a comparison constraint by flipping its operator.
+     * This is the core operation for DART-style concolic path exploration:
+     * given a path condition [C1, ..., Cn], we explore new paths by
+     * constructing C1 ∧ ... ∧ C(i-1) ∧ ¬Ci.
+     *
+     * Note on LT↔GT: Galette records constraints from DCMPL bytecode, which
+     * produces a 3-way result (LT/EQ/GT). The actual branch decision happens
+     * at the subsequent conditional jump (e.g., IFLE for ">"). Because the
+     * DCMPL result is more precise than the branch condition (e.g., LT vs LE),
+     * we negate LT↔GT (strict) to ensure the solver generates values that
+     * actually flip the branch, avoiding the ambiguous equality boundary.
+     *
+     * @param constraint The constraint to negate (must be a BinaryOperation with a comparison operator)
+     * @return The negated constraint, or null if the expression cannot be negated
+     */
+    public static Expression negateConstraint(Expression constraint) {
+        if (!(constraint instanceof BinaryOperation)) {
+            if (DEBUG) {
+                System.out.println("[Negate] Cannot negate non-BinaryOperation: " + constraint);
+            }
+            return null;
+        }
+
+        BinaryOperation binOp = (BinaryOperation) constraint;
+        Operation.Operator op = (Operation.Operator) binOp.getOperator();
+        Operation.Operator negatedOp;
+
+        switch (op) {
+            case LT:
+                negatedOp = Operation.Operator.GT; // strict: skip DCMPL EQ boundary
+                break;
+            case GT:
+                negatedOp = Operation.Operator.LT; // strict: skip DCMPL EQ boundary
+                break;
+            case GE:
+                negatedOp = Operation.Operator.LT;
+                break;
+            case LE:
+                negatedOp = Operation.Operator.GT;
+                break;
+            case EQ:
+                negatedOp = Operation.Operator.NE;
+                break;
+            case NE:
+                negatedOp = Operation.Operator.EQ;
+                break;
+            default:
+                if (DEBUG) {
+                    System.out.println("[Negate] Cannot negate operator: " + op);
+                }
+                return null;
+        }
+
+        return new BinaryOperation(negatedOp, binOp.left, binOp.right);
+    }
+
+    /**
+     * Build a conjunction (AND) of multiple constraints.
+     *
+     * @param constraints The constraints to conjoin
+     * @return A single expression representing C1 ∧ C2 ∧ ... ∧ Cn, or null if empty
+     */
+    public static Expression conjoin(List<Expression> constraints) {
+        if (constraints == null || constraints.isEmpty()) {
+            return null;
+        }
+        Expression result = constraints.get(0);
+        for (int i = 1; i < constraints.size(); i++) {
+            result = new BinaryOperation(Operation.Operator.AND, result, constraints.get(i));
+        }
+        return result;
+    }
+
+    /**
+     * Extract the first variable name found in an expression tree.
+     * Used to determine which variable to extract from a solver model.
+     *
+     * @param expr The expression to search
+     * @return The variable name, or null if no variable found
+     */
+    public static String extractVariableName(Expression expr) {
+        if (expr instanceof RealVariable) {
+            return ((RealVariable) expr).getName();
+        }
+        if (expr instanceof IntVariable) {
+            return ((IntVariable) expr).getName();
+        }
+        if (expr instanceof BinaryOperation) {
+            BinaryOperation binOp = (BinaryOperation) expr;
+            String left = extractVariableName(binOp.left);
+            if (left != null) return left;
+            return extractVariableName(binOp.right);
+        }
+        if (expr instanceof UnaryOperation) {
+            return extractVariableName(((UnaryOperation) expr).operand);
         }
         return null;
     }
@@ -1060,7 +1167,9 @@ public class GaletteSymbolicator {
                 if (DEBUG) {
                     System.out.println("[External Server] Constraint is UNSAT");
                 }
-                return null;
+                // Return an explicit UNSAT solution (not null) so callers can
+                // distinguish "definitively unsatisfiable" from "server error"
+                return new InputSolution(false);
             }
 
             InputSolution solution = new InputSolution();
@@ -1297,6 +1406,17 @@ public class GaletteSymbolicator {
         private static final long serialVersionUID = 1L;
 
         private final Map<String, Object> values = new HashMap<>();
+        private boolean satisfiable = true;
+
+        public InputSolution() {}
+
+        public InputSolution(boolean satisfiable) {
+            this.satisfiable = satisfiable;
+        }
+
+        public boolean isSatisfiable() {
+            return satisfiable;
+        }
 
         public void setValue(String label, Object value) {
             values.put(label, value);
@@ -1312,6 +1432,7 @@ public class GaletteSymbolicator {
 
         @Override
         public String toString() {
+            if (!satisfiable) return "InputSolution[UNSAT]";
             return "InputSolution" + values;
         }
     }

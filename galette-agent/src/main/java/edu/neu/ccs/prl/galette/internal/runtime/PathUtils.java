@@ -348,6 +348,10 @@ public final class PathUtils {
 
         if (isEnabled() && mightBeSymbolic(value1, value2)) {
             List<Constraint> conditions = PATH_CONDITIONS.get();
+            if (conditions == null) {
+                conditions = new ArrayList<>();
+                PATH_CONDITIONS.set(conditions);
+            }
             conditions.add(new Constraint(value1, value2, operation, result ? 1 : 0));
 
             if (DEBUG) {
@@ -377,6 +381,10 @@ public final class PathUtils {
 
         if (isEnabled() && mightBeSymbolic(value1, value2)) {
             List<Constraint> conditions = PATH_CONDITIONS.get();
+            if (conditions == null) {
+                conditions = new ArrayList<>();
+                PATH_CONDITIONS.set(conditions);
+            }
             conditions.add(new Constraint(value1, value2, operation, result ? 1 : 0));
 
             if (DEBUG) {
