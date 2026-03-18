@@ -27,7 +27,7 @@ public class BrakeDiscTransformation {
     /**
      * Threshold for additional stiffness determination.
      */
-    private static final double STIFFNESS_THRESHOLD = 80.0; // mm
+    private static final double STIFFNESS_THRESHOLD = 90.0; // mm
 
     /**
      * Transform a source brake disc model to a target model with enhanced properties.
@@ -65,7 +65,7 @@ public class BrakeDiscTransformation {
         calculateGeometricProperties(source, thickness, target);
 
         // Apply engineering rules
-        applyEngineeringRules(thickness, target);
+        applyEngineeringRules(thickness, source, target);
 
         return target;
     }
@@ -94,13 +94,17 @@ public class BrakeDiscTransformation {
     /**
      * Apply engineering rules based on thickness and other properties.
      */
-    private static void applyEngineeringRules(double thickness, BrakeDiscTarget target) {
+    private static void applyEngineeringRules(double thickness, BrakeDiscSource source, BrakeDiscTarget target) {
         // Rule: If thickness > STIFFNESS_THRESHOLD, then additional stiffness is present
         // boolean hasAdditionalStiffness = SymbolicExecutionWrapper.compare(thickness, STIFFNESS_THRESHOLD,
         // Operator.GT);
         boolean hasAdditionalStiffness = thickness > STIFFNESS_THRESHOLD;
 
         target.setAdditionalStiffness(hasAdditionalStiffness);
+
+        if (thickness > source.getDiameter()) {
+            target.setCoolingVanes(7);
+        }
     }
 
     /**
