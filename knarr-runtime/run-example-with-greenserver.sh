@@ -432,8 +432,15 @@ echo ""
 if [ "$FORCE_CLEAN_BUILD" = "true" ] || [ "$FORCE_REBUILD_AGENT" = "true" ]; then
     echo "Rebuilding all galette modules from parent project..."
     if [ "$CODESPACES_MODE" = "true" ]; then
-        # In Codespaces: skip source plugin (duplicate execution issue) and use install
-        (cd .. && mvn clean install -pl galette-agent,galette-instrument -DskipTests -Dmaven.source.skip=true -q)
+        # In Codespaces: also install parent POM so knarr-runtime can resolve its parent,
+        # and skip source plugin (duplicate execution issue)
+        (cd .. && mvn clean install -N -DskipTests -Dmaven.source.skip=true -q) # -N = non-recursive, installs parent POM only
+        (cd .. && mvn clean install -pl galette-agent,galette-instrument,galette-maven-plugin -DskipTests -Dmaven.source.skip=true -q)
+        # Install Green solver to local repo if not already present
+        if [ ! -f "$HOME/.m2/repository/edu/gmu/swe/greensolver/green/1.0-SNAPSHOT/green-1.0-SNAPSHOT.jar" ]; then
+            echo "Installing Green solver to local Maven repo..."
+            (cd "$GREEN_SOLVER_ROOT/green" && mvn install -DskipTests -q)
+        fi
     else
         (cd .. && mvn clean install -pl galette-agent,galette-instrument -DskipTests -q)
     fi

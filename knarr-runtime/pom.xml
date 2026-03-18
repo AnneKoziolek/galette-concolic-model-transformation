@@ -16,6 +16,7 @@
     
     <repositories>
         <!-- Local workspace Maven repository (highest priority) -->
+        <!-- local.repo.path defaults to ~/.m2/repository if not set (e.g. in Codespaces) -->
         <repository>
             <id>local-repo</id>
             <url>file://${local.repo.path}</url>
@@ -27,7 +28,7 @@
             </snapshots>
         </repository>
     </repositories>
-    
+
     <dependencies>
         <!-- Galette agent dependency for taint tracking -->
         <dependency>
@@ -70,6 +71,8 @@
     </dependencies>
     
     <properties>
+        <!-- Default local.repo.path to standard Maven local repo if not provided externally -->
+        <local.repo.path>${user.home}/.m2/repository</local.repo.path>
         <galette.agentJar>${edu.neu.ccs.prl.galette:galette-agent:jar}</galette.agentJar>
         <galette.java>${project.build.directory}/galette/java/</galette.java>
         <galette.cache>${project.build.directory}/galette/cache</galette.cache>
