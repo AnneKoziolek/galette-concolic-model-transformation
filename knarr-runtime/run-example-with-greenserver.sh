@@ -19,11 +19,16 @@ set -e  # Exit on any error
 # Environment Detection: --codespaces flag or auto-detect
 # ============================================================================
 CODESPACES_MODE=false
+DEVCONTAINER_MODE=false
 for arg in "$@"; do
     if [ "$arg" = "--codespaces" ]; then
         CODESPACES_MODE=true
-        # Remove --codespaces from args so it doesn't get passed to the Java app
         set -- "${@/--codespaces/}"
+        break
+    fi
+    if [ "$arg" = "--devcontainer" ]; then
+        DEVCONTAINER_MODE=true
+        set -- "${@/--devcontainer/}"
         break
     fi
 done
@@ -34,12 +39,17 @@ if [ "$CODESPACES_MODE" = "false" ] && [ -n "$CODESPACE_NAME" ]; then
     CODESPACES_MODE=true
 fi
 
+# Auto-detect devcontainer: /workspace exists and we're not in Codespaces
+if [ "$DEVCONTAINER_MODE" = "false" ] && [ "$CODESPACES_MODE" = "false" ] && [ -d "/workspace/galette-concolic-model-transformation" ]; then
+    echo "Auto-detected devcontainer environment"
+    DEVCONTAINER_MODE=true
+fi
+
 # ============================================================================
 # Path Configuration (environment-dependent)
 # ============================================================================
 if [ "$CODESPACES_MODE" = "true" ]; then
     echo "Running in Codespaces mode"
-    # Codespaces: project is under /workspaces/research-agent-workspace/workspaces/projects/
     WORKSPACE_ROOT="/workspaces/research-agent-workspace/workspaces/projects"
     GREEN_SOLVER_ROOT="$WORKSPACE_ROOT/green-solver"
 
@@ -57,6 +67,32 @@ if [ "$CODESPACES_MODE" = "true" ]; then
         echo "Installing Java 21 for GreenServer (one-time setup)..."
         sudo apt-get update -qq && sudo apt-get install -y -qq openjdk-21-jdk-headless > /dev/null 2>&1
         echo "   Java 21 installed"
+    fi
+elif [ "$DEVCONTAINER_MODE" = "true" ]; then
+    echo "Running in devcontainer mode"
+    WORKSPACE_ROOT="/workspace"
+    GREEN_SOLVER_ROOT="$WORKSPACE_ROOT/green-solver"
+
+    # Java 17: prefer SDKMAN, then system
+    if [ -d "/usr/local/sdkman/candidates/java/17.0.18-ms" ]; then
+        export JAVA_HOME="/usr/local/sdkman/candidates/java/17.0.18-ms"
+    elif [ -d "/usr/local/sdkman/candidates/java/current" ]; then
+        export JAVA_HOME="/usr/local/sdkman/candidates/java/current"
+    elif [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
+        export JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"
+    fi
+    export PATH="$JAVA_HOME/bin:$PATH"
+
+    # Java 21 for GreenServer: prefer SDKMAN, then system
+    if [ -d "/usr/local/sdkman/candidates/java/21.0.10-ms" ]; then
+        GREEN_SERVER_JAVA_HOME="/usr/local/sdkman/candidates/java/21.0.10-ms"
+    elif ls -d /usr/local/sdkman/candidates/java/21.* 2>/dev/null | head -1 > /dev/null 2>&1; then
+        GREEN_SERVER_JAVA_HOME="$(ls -d /usr/local/sdkman/candidates/java/21.* 2>/dev/null | head -1)"
+    elif [ -d "/usr/lib/jvm/java-21-openjdk-amd64" ]; then
+        GREEN_SERVER_JAVA_HOME="/usr/lib/jvm/java-21-openjdk-amd64"
+    else
+        echo "Error: Java 21 not found. Install it with: source /usr/local/sdkman/bin/sdkman-init.sh && sdk install java 21.0.10-ms"
+        exit 1
     fi
 else
     # Local (Anne's machine): original paths
@@ -431,8 +467,8 @@ echo ""
 # Rebuild galette modules if requested (both galette-agent AND galette-instrument)
 if [ "$FORCE_CLEAN_BUILD" = "true" ] || [ "$FORCE_REBUILD_AGENT" = "true" ]; then
     echo "Rebuilding all galette modules from parent project..."
-    if [ "$CODESPACES_MODE" = "true" ]; then
-        # In Codespaces: also install parent POM so knarr-runtime can resolve its parent,
+    if [ "$CODESPACES_MODE" = "true" ] || [ "$DEVCONTAINER_MODE" = "true" ]; then
+        # In Codespaces/devcontainer: also install parent POM so knarr-runtime can resolve its parent,
         # and skip source plugin (duplicate execution issue)
         (cd .. && mvn clean install -N -DskipTests -Dmaven.source.skip=true -q) # -N = non-recursive, installs parent POM only
         (cd .. && mvn clean install -pl galette-agent,galette-instrument,galette-maven-plugin -DskipTests -Dmaven.source.skip=true -q)
