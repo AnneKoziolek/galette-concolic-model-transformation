@@ -59,3 +59,6 @@ knarr-runtime/GaletteSymbolicatorWithGreen.java.txt
 knarr-runtime/GaletteSymbolicatorWithGreen.java.txt:Zone.Identifier
 knarr-runtime/GalettePathUtilsFromOtherBranch.java.txt
 knarr-runtime/GalettePathUtilsFromOtherBranch.java.txt:Zone.Identifier
+
+# Environment-specific generated classpath
+knarr-runtime/cp.txt

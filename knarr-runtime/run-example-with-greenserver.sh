@@ -598,7 +598,23 @@ echo "   Use Green Solver: $USE_GREEN_SOLVER"
 echo "   External GreenServer: $USE_EXTERNAL_GREEN_SERVER (port $GREEN_SERVER_PORT)"
 
 # Generate classpath using Maven (only if needed)
-if [ ! -f cp.txt ] || [ $(find cp.txt -mmin +60 2>/dev/null | wc -l) -eq 1 ]; then
+# Regenerate if: missing, older than 60 minutes, or contains paths from a different environment
+NEED_CP_REGEN=false
+if [ ! -f cp.txt ]; then
+    NEED_CP_REGEN=true
+elif [ $(find cp.txt -mmin +60 2>/dev/null | wc -l) -eq 1 ]; then
+    NEED_CP_REGEN=true
+else
+    # Check if the first classpath entry actually exists on this machine
+    # (catches stale cp.txt from a different environment, e.g. Codespaces vs local)
+    FIRST_CP_ENTRY=$(head -1 cp.txt | tr ':' '\n' | head -1)
+    if [ -n "$FIRST_CP_ENTRY" ] && [ ! -e "$FIRST_CP_ENTRY" ]; then
+        echo "Classpath contains entries that don't exist locally - regenerating..."
+        NEED_CP_REGEN=true
+    fi
+fi
+
+if [ "$NEED_CP_REGEN" = "true" ]; then
     echo "Generating classpath..."
     mvn dependency:build-classpath -Dmdep.outputFile=cp.txt -q
 
