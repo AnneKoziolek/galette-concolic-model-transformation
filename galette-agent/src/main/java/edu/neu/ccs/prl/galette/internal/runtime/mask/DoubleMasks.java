@@ -22,7 +22,15 @@ public final class DoubleMasks {
     @Mask(owner = "java/lang/Double", name = "doubleToLongBits", isStatic = true, type = MaskType.POST_PROCESS)
     public static long doubleToIntBits(long returnValue, double value, TagFrame frame) {
         Tag valueTag = frame.get(0);
-        frame.setReturnTag(valueTag);
+        // CoCoPath/UncertainTree: the bit pattern of a symbolic floating-point value is
+        // not expressible without floating-point bit-vector theory. Carrying the value's
+        // expression onto the bits makes JDK internals (e.g. Math.round) branch on garbage.
+        // While a symbolic listener is installed, the bits are therefore untagged; library
+        // functions that need them get dedicated masks (MathSymbolicMasks).
+        frame.setReturnTag(
+                edu.neu.ccs.prl.galette.internal.runtime.symbolic.SymbolicListener.isSymbolic()
+                        ? Tag.emptyTag()
+                        : valueTag);
         return returnValue;
     }
 

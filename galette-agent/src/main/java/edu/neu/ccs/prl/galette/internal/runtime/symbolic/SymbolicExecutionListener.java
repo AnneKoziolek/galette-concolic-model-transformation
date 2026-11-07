@@ -331,6 +331,15 @@ public interface SymbolicExecutionListener {
     }
 
     /**
+     * Invoked after {@code Math.round(float)} / {@code Math.round(double)} on a tagged
+     * argument (CoCoPath/UncertainTree addition). Returns the tag for the rounded result.
+     * The default keeps the argument's tag (plain taint semantics).
+     */
+    default Tag onMathRound(boolean isFloat, double value, Tag tag) {
+        return tag;
+    }
+
+    /**
      * Invoked for {@code int String.length()}.
      */
     default Tag onStringLength(int concreteResult, String receiver, Tag receiverTag, Tag[] receiverCharTags) {

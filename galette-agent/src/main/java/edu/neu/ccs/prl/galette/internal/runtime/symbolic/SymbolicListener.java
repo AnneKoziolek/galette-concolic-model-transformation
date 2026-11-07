@@ -348,6 +348,23 @@ public final class SymbolicListener {
 
     // ---------- String ops ----------
     //
+    // Called from MathSymbolicMasks (CoCoPath/UncertainTree addition).
+    public static Tag onMathRound(boolean isFloat, double value, Tag tag) {
+        SymbolicExecutionListener l = listener;
+        if (l != null && !Tag.isEmpty(tag)) {
+            try {
+                return l.onMathRound(isFloat, value, tag);
+            } catch (Throwable ignored) {
+            }
+        }
+        return tag;
+    }
+
+    /** True while a symbolic-execution listener is installed. */
+    public static boolean isSymbolic() {
+        return listener != null;
+    }
+
     // Called from @Mask methods in StringSymbolicMasks. Not via @InvokedViaHandle —
     // masks resolve us by reflective MethodRecord lookup during patching.
 
