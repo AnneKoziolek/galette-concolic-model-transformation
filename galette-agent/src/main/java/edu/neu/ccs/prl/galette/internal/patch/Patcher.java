@@ -62,8 +62,10 @@ public final class Patcher {
         if (archive.exists() && !archive.delete()) {
             throw new IOException("Failed to delete unpatched archive: " + archive);
         }
+        // renameTo fails across filesystems (e.g. /tmp -> a bind-mounted /workspace in a
+        // devcontainer); fall back to Files.move. Same fix as CoCoPath's Patcher.
         if (!temp.renameTo(archive)) {
-            throw new IOException("Failed to move patched JAR: " + temp);
+            Files.move(temp.toPath(), archive.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
         }
     }
 
