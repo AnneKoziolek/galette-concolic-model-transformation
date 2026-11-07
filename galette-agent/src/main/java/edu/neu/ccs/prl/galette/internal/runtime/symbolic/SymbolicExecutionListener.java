@@ -340,6 +340,19 @@ public interface SymbolicExecutionListener {
     }
 
     /**
+     * Invoked after {@code Integer.compare} / {@code Long.compare} (CoCoPath/UncertainTree
+     * addition) with at least one tagged argument. Returns the tag for the -1/0/1 result.
+     */
+    default Tag onIntegralCompare(boolean isLong, long v1, long v2, Tag t1, Tag t2) {
+        return Tag.union(t1, t2);
+    }
+
+    /** As {@link #onIntegralCompare} for {@code Float.compare} / {@code Double.compare}. */
+    default Tag onRealCompare(boolean isFloat, double v1, double v2, Tag t1, Tag t2) {
+        return Tag.union(t1, t2);
+    }
+
+    /**
      * Invoked for {@code int String.length()}.
      */
     default Tag onStringLength(int concreteResult, String receiver, Tag receiverTag, Tag[] receiverCharTags) {

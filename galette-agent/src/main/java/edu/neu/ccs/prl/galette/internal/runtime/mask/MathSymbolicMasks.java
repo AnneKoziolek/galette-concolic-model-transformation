@@ -24,4 +24,32 @@ public final class MathSymbolicMasks {
         frame.setReturnTag(SymbolicListener.onMathRound(false, value, frame.get(0)));
         return returnValue;
     }
+
+    // X.compare(a, b): the JDK computes -1/0/1 with branches whose results are untagged
+    // constants, so a caller's "compare(a, b) < 0" would lose the comparison. The
+    // listener supplies a tag for the result instead (e.g. Knarr's CmpDifference).
+
+    @Mask(owner = "java/lang/Integer", name = "compare", isStatic = true, type = MaskType.POST_PROCESS)
+    public static int integerCompare(int returnValue, int a, int b, TagFrame frame) {
+        frame.setReturnTag(SymbolicListener.onIntegralCompare(false, a, b, frame.get(0), frame.get(1)));
+        return returnValue;
+    }
+
+    @Mask(owner = "java/lang/Long", name = "compare", isStatic = true, type = MaskType.POST_PROCESS)
+    public static int longCompare(int returnValue, long a, long b, TagFrame frame) {
+        frame.setReturnTag(SymbolicListener.onIntegralCompare(true, a, b, frame.get(0), frame.get(1)));
+        return returnValue;
+    }
+
+    @Mask(owner = "java/lang/Float", name = "compare", isStatic = true, type = MaskType.POST_PROCESS)
+    public static int floatCompare(int returnValue, float a, float b, TagFrame frame) {
+        frame.setReturnTag(SymbolicListener.onRealCompare(true, a, b, frame.get(0), frame.get(1)));
+        return returnValue;
+    }
+
+    @Mask(owner = "java/lang/Double", name = "compare", isStatic = true, type = MaskType.POST_PROCESS)
+    public static int doubleCompare(int returnValue, double a, double b, TagFrame frame) {
+        frame.setReturnTag(SymbolicListener.onRealCompare(false, a, b, frame.get(0), frame.get(1)));
+        return returnValue;
+    }
 }

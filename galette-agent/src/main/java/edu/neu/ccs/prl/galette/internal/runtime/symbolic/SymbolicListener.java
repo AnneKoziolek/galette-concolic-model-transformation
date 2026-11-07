@@ -42,6 +42,61 @@ public final class SymbolicListener {
         }
     }
 
+    /**
+     * CoCoPath/UncertainTree: whether branches inside library (JDK) code are reported.
+     * JDK classes are instrumented at jlink time, so their branch hooks call the
+     * {@code *Lib} variants below, which check this flag. Default true (original
+     * behaviour); a client that only wants branches of selected application classes
+     * (see TagPropagator, galette.symbolic.branchPrefixes) turns it off.
+     */
+    private static volatile boolean recordLibraryBranches = true;
+
+    public static void setRecordLibraryBranches(boolean value) {
+        recordLibraryBranches = value;
+    }
+
+    @InvokedViaHandle(handle = Handle.SYMBOLIC_ON_INT_BRANCH_LIB)
+    public static void onIntBranchLib(int opcode, int value, Tag tag) {
+        if (recordLibraryBranches) {
+            onIntBranch(opcode, value, tag);
+        }
+    }
+
+    @InvokedViaHandle(handle = Handle.SYMBOLIC_ON_INT_CMP_BRANCH_LIB)
+    public static void onIntCmpBranchLib(int opcode, int value1, int value2, Tag tag1, Tag tag2) {
+        if (recordLibraryBranches) {
+            onIntCmpBranch(opcode, value1, value2, tag1, tag2);
+        }
+    }
+
+    @InvokedViaHandle(handle = Handle.SYMBOLIC_ON_REF_BRANCH_LIB)
+    public static void onRefBranchLib(int opcode, Object value, Tag tag) {
+        if (recordLibraryBranches) {
+            onRefBranch(opcode, value, tag);
+        }
+    }
+
+    @InvokedViaHandle(handle = Handle.SYMBOLIC_ON_REF_CMP_BRANCH_LIB)
+    public static void onRefCmpBranchLib(int opcode, Object value1, Object value2, Tag tag1, Tag tag2) {
+        if (recordLibraryBranches) {
+            onRefCmpBranch(opcode, value1, value2, tag1, tag2);
+        }
+    }
+
+    @InvokedViaHandle(handle = Handle.SYMBOLIC_ON_TABLE_SWITCH_LIB)
+    public static void onTableSwitchLib(int opcode, int value, Tag tag, int min, int max) {
+        if (recordLibraryBranches) {
+            onTableSwitch(opcode, value, tag, min, max);
+        }
+    }
+
+    @InvokedViaHandle(handle = Handle.SYMBOLIC_ON_LOOKUP_SWITCH_LIB)
+    public static void onLookupSwitchLib(int opcode, int value, Tag tag, int[] keys) {
+        if (recordLibraryBranches) {
+            onLookupSwitch(opcode, value, tag, keys);
+        }
+    }
+
     @InvokedViaHandle(handle = Handle.SYMBOLIC_ON_INT_CMP_BRANCH)
     public static void onIntCmpBranch(int opcode, int value1, int value2, Tag tag1, Tag tag2) {
         SymbolicExecutionListener l = listener;
@@ -334,6 +389,32 @@ public final class SymbolicListener {
         return elemTag;
     }
 
+    // CoCoPath/UncertainTree: array hooks also record facts (select/store/bounds). JDK
+    // classes call the *Lib variants (reported only while recordLibraryBranches),
+    // application classes outside galette.symbolic.branchPrefixes the *Passive ones,
+    // which keep Galette's ordinary tags and never call the listener.
+
+    @InvokedViaHandle(handle = Handle.SYMBOLIC_ON_ARRAY_LOAD_LIB)
+    public static Tag onArrayLoadLib(int opcode, Object array, int index, Tag arrayTag, Tag indexTag, Tag elemTag) {
+        return recordLibraryBranches ? onArrayLoad(opcode, array, index, arrayTag, indexTag, elemTag) : elemTag;
+    }
+
+    @InvokedViaHandle(handle = Handle.SYMBOLIC_ON_ARRAY_STORE_LIB)
+    public static Tag onArrayStoreLib(int opcode, Object array, int index, Tag arrayTag, Tag indexTag, Tag valueTag) {
+        return recordLibraryBranches ? onArrayStore(opcode, array, index, arrayTag, indexTag, valueTag) : valueTag;
+    }
+
+    @InvokedViaHandle(handle = Handle.SYMBOLIC_ON_ARRAY_LOAD_PASSIVE)
+    public static Tag onArrayLoadPassive(int opcode, Object array, int index, Tag arrayTag, Tag indexTag, Tag elemTag) {
+        return elemTag;
+    }
+
+    @InvokedViaHandle(handle = Handle.SYMBOLIC_ON_ARRAY_STORE_PASSIVE)
+    public static Tag onArrayStorePassive(
+            int opcode, Object array, int index, Tag arrayTag, Tag indexTag, Tag valueTag) {
+        return valueTag;
+    }
+
     @InvokedViaHandle(handle = Handle.SYMBOLIC_ON_ARRAY_STORE)
     public static Tag onArrayStore(int opcode, Object array, int index, Tag arrayTag, Tag indexTag, Tag valueTag) {
         SymbolicExecutionListener l = listener;
@@ -358,6 +439,30 @@ public final class SymbolicListener {
             }
         }
         return tag;
+    }
+
+    // Called from MathSymbolicMasks (CoCoPath/UncertainTree addition).
+    public static Tag onIntegralCompare(boolean isLong, long v1, long v2, Tag t1, Tag t2) {
+        SymbolicExecutionListener l = listener;
+        if (l != null && (!Tag.isEmpty(t1) || !Tag.isEmpty(t2))) {
+            try {
+                return l.onIntegralCompare(isLong, v1, v2, t1, t2);
+            } catch (Throwable ignored) {
+            }
+        }
+        return Tag.union(t1, t2);
+    }
+
+    // Called from MathSymbolicMasks (CoCoPath/UncertainTree addition).
+    public static Tag onRealCompare(boolean isFloat, double v1, double v2, Tag t1, Tag t2) {
+        SymbolicExecutionListener l = listener;
+        if (l != null && (!Tag.isEmpty(t1) || !Tag.isEmpty(t2))) {
+            try {
+                return l.onRealCompare(isFloat, v1, v2, t1, t2);
+            } catch (Throwable ignored) {
+            }
+        }
+        return Tag.union(t1, t2);
     }
 
     /** True while a symbolic-execution listener is installed. */

@@ -12,14 +12,85 @@ import org.objectweb.asm.commons.AnalyzerAdapter;
 import org.objectweb.asm.tree.MethodNode;
 
 class TagPropagator extends MethodVisitor {
-    private final ShadowLocals shadowLocals;
+    /*
+     * CoCoPath/UncertainTree: per-class branch-hook mode. Tag propagation and
+     * arithmetic/convert hooks are unaffected; only the hooks that report branch
+     * decisions (IFxx, IF_ICMPxx, IF_ACMPxx, IFNULL/IFNONNULL, switches) change.
+     *   NORMAL : report branches (original behaviour)
+     *   SKIP   : application class outside galette.symbolic.branchPrefixes: emit no
+     *            branch hooks (no cost, no constraints from e.g. EMF or Vitruvius)
+     *   LIBRARY: JDK class (instrumented at jlink time, where no options reach the
+     *            transformer): call the *Lib dispatcher variants, which report only
+     *            while SymbolicListener.recordLibraryBranches is true (default)
+     */
+    private static final int BRANCHES_NORMAL = 0;
+    private static final int BRANCHES_SKIP = 1;
+    private static final int BRANCHES_LIBRARY = 2;
+    private static final String[] BRANCH_PREFIXES = parseBranchPrefixes();
 
-    private TagPropagator(ShadowLocals shadowLocals, MethodVisitor mv) {
+    private final ShadowLocals shadowLocals;
+    private final int branchMode;
+
+    private TagPropagator(ShadowLocals shadowLocals, MethodVisitor mv, int branchMode) {
         super(GaletteTransformer.ASM_VERSION, mv);
         if (shadowLocals == null) {
             throw new NullPointerException();
         }
         this.shadowLocals = shadowLocals;
+        this.branchMode = branchMode;
+    }
+
+    private static String[] parseBranchPrefixes() {
+        String s = System.getProperty("galette.symbolic.branchPrefixes");
+        if (s == null || s.trim().isEmpty()) {
+            return null;
+        }
+        String[] parts = s.split(",");
+        for (int i = 0; i < parts.length; i++) {
+            parts[i] = parts[i].trim().replace('.', '/');
+        }
+        return parts;
+    }
+
+    private static boolean isLibraryClass(String owner) {
+        return owner.startsWith("java/")
+                || owner.startsWith("javax/")
+                || owner.startsWith("jdk/")
+                || owner.startsWith("sun/")
+                || owner.startsWith("com/sun/");
+    }
+
+    private static int branchModeFor(String owner) {
+        if (owner == null) {
+            return BRANCHES_NORMAL;
+        }
+        if (isLibraryClass(owner)) {
+            return BRANCHES_LIBRARY;
+        }
+        if (BRANCH_PREFIXES == null) {
+            return BRANCHES_NORMAL;
+        }
+        for (String p : BRANCH_PREFIXES) {
+            if (!p.isEmpty() && owner.startsWith(p)) {
+                return BRANCHES_NORMAL;
+            }
+        }
+        return BRANCHES_SKIP;
+    }
+
+    private Handle branchHandle(Handle normal, Handle library) {
+        return branchMode == BRANCHES_LIBRARY ? library : normal;
+    }
+
+    private Handle arrayHandle(Handle normal, Handle library, Handle passive) {
+        switch (branchMode) {
+            case BRANCHES_LIBRARY:
+                return library;
+            case BRANCHES_SKIP:
+                return passive;
+            default:
+                return normal;
+        }
     }
 
     @Override
@@ -793,6 +864,9 @@ class TagPropagator extends MethodVisitor {
      * the subsequent {@code IFxx} instruction to consume.
      */
     private void emitIntBranchHook(int opcode) {
+        if (branchMode == BRANCHES_SKIP) {
+            return;
+        }
         // Start: [..., value]
         super.visitInsn(Opcodes.DUP);
         // [..., value, value]
@@ -802,7 +876,8 @@ class TagPropagator extends MethodVisitor {
         // [..., value, opcode, value]
         shadowLocals.peek(0);
         // [..., value, opcode, value, tag]
-        Handle.SYMBOLIC_ON_INT_BRANCH.accept(mv);
+        branchHandle(Handle.SYMBOLIC_ON_INT_BRANCH, Handle.SYMBOLIC_ON_INT_BRANCH_LIB)
+                .accept(mv);
         // [..., value]
     }
 
@@ -812,12 +887,16 @@ class TagPropagator extends MethodVisitor {
      * original reference on the stack for the subsequent jump.
      */
     private void emitRefBranchHook(int opcode) {
+        if (branchMode == BRANCHES_SKIP) {
+            return;
+        }
         // Start: [..., ref]
         super.visitInsn(Opcodes.DUP);
         super.visitLdcInsn(opcode);
         super.visitInsn(Opcodes.SWAP);
         shadowLocals.peek(0);
-        Handle.SYMBOLIC_ON_REF_BRANCH.accept(mv);
+        branchHandle(Handle.SYMBOLIC_ON_REF_BRANCH, Handle.SYMBOLIC_ON_REF_BRANCH_LIB)
+                .accept(mv);
         // [..., ref]
     }
 
@@ -828,6 +907,9 @@ class TagPropagator extends MethodVisitor {
      * operands on the stack.
      */
     private void emitIntCmpBranchHook(int opcode, boolean refs) {
+        if (branchMode == BRANCHES_SKIP) {
+            return;
+        }
         // Start: [..., value1, value2]
         super.visitInsn(Opcodes.DUP2);
         // [..., value1, value2, value1, value2]
@@ -841,9 +923,11 @@ class TagPropagator extends MethodVisitor {
         shadowLocals.peek(0);
         // [..., value1, value2, opcode, value1, value2, tag1, tag2]
         if (refs) {
-            Handle.SYMBOLIC_ON_REF_CMP_BRANCH.accept(mv);
+            branchHandle(Handle.SYMBOLIC_ON_REF_CMP_BRANCH, Handle.SYMBOLIC_ON_REF_CMP_BRANCH_LIB)
+                    .accept(mv);
         } else {
-            Handle.SYMBOLIC_ON_INT_CMP_BRANCH.accept(mv);
+            branchHandle(Handle.SYMBOLIC_ON_INT_CMP_BRANCH, Handle.SYMBOLIC_ON_INT_CMP_BRANCH_LIB)
+                    .accept(mv);
         }
         // [..., value1, value2]
     }
@@ -854,6 +938,9 @@ class TagPropagator extends MethodVisitor {
      * the stack.
      */
     private void emitTableSwitchHook(int min, int max) {
+        if (branchMode == BRANCHES_SKIP) {
+            return;
+        }
         // Start: [..., value]
         super.visitInsn(Opcodes.DUP);
         // [..., value, value]
@@ -865,7 +952,8 @@ class TagPropagator extends MethodVisitor {
         super.visitLdcInsn(min);
         super.visitLdcInsn(max);
         // [..., value, opcode, value, tag, min, max]
-        Handle.SYMBOLIC_ON_TABLE_SWITCH.accept(mv);
+        branchHandle(Handle.SYMBOLIC_ON_TABLE_SWITCH, Handle.SYMBOLIC_ON_TABLE_SWITCH_LIB)
+                .accept(mv);
         // [..., value]
     }
 
@@ -875,6 +963,9 @@ class TagPropagator extends MethodVisitor {
      * runtime and leaves the original key on the stack.
      */
     private void emitLookupSwitchHook(int[] keys) {
+        if (branchMode == BRANCHES_SKIP) {
+            return;
+        }
         // Start: [..., value]
         super.visitInsn(Opcodes.DUP);
         // [..., value, value]
@@ -892,7 +983,8 @@ class TagPropagator extends MethodVisitor {
             super.visitLdcInsn(keys[i]);
             super.visitInsn(Opcodes.IASTORE);
         }
-        Handle.SYMBOLIC_ON_LOOKUP_SWITCH.accept(mv);
+        branchHandle(Handle.SYMBOLIC_ON_LOOKUP_SWITCH, Handle.SYMBOLIC_ON_LOOKUP_SWITCH_LIB)
+                .accept(mv);
         // [..., value]
     }
 
@@ -1177,7 +1269,11 @@ class TagPropagator extends MethodVisitor {
         shadowLocals.peek(1);
         shadowLocals.peek(0);
         super.visitVarInsn(Opcodes.ALOAD, tagSlot);
-        Handle.SYMBOLIC_ON_ARRAY_LOAD.accept(mv);
+        arrayHandle(
+                        Handle.SYMBOLIC_ON_ARRAY_LOAD,
+                        Handle.SYMBOLIC_ON_ARRAY_LOAD_LIB,
+                        Handle.SYMBOLIC_ON_ARRAY_LOAD_PASSIVE)
+                .accept(mv);
         // [resultTag]
         super.visitVarInsn(Opcodes.ASTORE, tagSlot);
         super.visitVarInsn(Opcodes.ALOAD, arrSlot);
@@ -1218,7 +1314,11 @@ class TagPropagator extends MethodVisitor {
             shadowLocals.peek(1);
             shadowLocals.peek(0);
         }
-        Handle.SYMBOLIC_ON_ARRAY_STORE.accept(mv);
+        arrayHandle(
+                        Handle.SYMBOLIC_ON_ARRAY_STORE,
+                        Handle.SYMBOLIC_ON_ARRAY_STORE_LIB,
+                        Handle.SYMBOLIC_ON_ARRAY_STORE_PASSIVE)
+                .accept(mv);
         // [newValueTag]
         super.visitVarInsn(Opcodes.ASTORE, tagSlot);
         // Mirror into ArrayTagStore
@@ -1242,7 +1342,7 @@ class TagPropagator extends MethodVisitor {
 
     static MethodVisitor newInstance(MethodVisitor mv, MethodNode original, boolean isShadow, String owner) {
         ShadowLocals shadowLocals = ShadowLocals.newInstance(mv, original, isShadow);
-        TagPropagator propagator = new TagPropagator(shadowLocals, shadowLocals);
+        TagPropagator propagator = new TagPropagator(shadowLocals, shadowLocals, branchModeFor(owner));
         AnalyzerAdapter analyzer =
                 new AnalyzerAdapter(owner, original.access, original.name, original.desc, propagator);
         IndirectFramePasser iPasser = new IndirectFramePasser(shadowLocals, analyzer, analyzer);
