@@ -497,8 +497,15 @@ class TagPropagator extends MethodVisitor {
 
     private void visitInstanceOf(String type) {
         // ..., objectref -> ..., result
-        // No need to do anything for data flow propagation
         super.visitTypeInsn(INSTANCEOF, type);
+        // CoCoPath/UncertainTree (2026-11-10): the result depends on the object's type only. Kept
+        // with the reference's tag, a boxed symbolic value (Double.valueOf carries the value's tag
+        // on the box) made "newValue instanceof Enumerator" an int carrying the value's expression,
+        // and the branch on it was recorded as "0 == x", false at its own input (brake demonstrator,
+        // SysmlParts.attributeReplaced). The result is untagged.
+        shadowLocals.pop(1);
+        Handle.TAG_GET_EMPTY.accept(mv);
+        shadowLocals.push();
     }
 
     private void visitCheckCast(String type) {
